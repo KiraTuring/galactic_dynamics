@@ -1,0 +1,23 @@
+# Data files
+data/raw/
+*.fits
+*.pkl
+
+# Results
+results/
+
+# Other repositories
+Axi_Schwarzschild/
+JAM/
+
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# System
+.DS_Store
+Thumbs.db
+RUNS.md
