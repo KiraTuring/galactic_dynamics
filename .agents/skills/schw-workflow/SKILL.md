@@ -1,11 +1,15 @@
 ---
 name: schw-workflow
 description: >
-  Full AxiSchw Schwarzschild workflow: create configs, submit model runs to Slurm,
-  monitor progress, and post-process results. Covers the complete lifecycle from
-  config creation through chi2 analysis, kinematics comparison, mass/anisotropy
-  diagnostics, and isotropy sensitivity tests. Use when starting a new model run
-  or analyzing completed grid results.
+  Full AxiSchw Schwarzschild lifecycle: create model configs, submit grid runs
+  to Slurm via run.py, monitor with squeue, and post-process results. Use this
+  skill whenever the user wants to start a new AxiSchw run, submit a Schwarzschild
+  model, run BayesOpt/CmaEs, check Slurm job status, analyze chi2 convergence,
+  plot kinematics (V/sigma/h3/h4 Model vs Observed), generate 1D slit extraction,
+  2D velocity ellipsoids, mass/anisotropy profiles, test isotropy constraints
+  with rerun_nnls.py, or run analyze_results.py. Do NOT use for data preparation
+  (use galaxy-data-prep instead) or for checking pipeline architecture (read
+  AGENTS.md).
 ---
 
 # AxiSchw Workflow
