@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "ssh": {
+    "host": "galaxy-login",
+    "remotePath": "/share/home/maoshudeLab/wanght245001/galactic_dynamics",
+    "user": "wanght245001",
+    "port": 10002,
+    "socks5Proxy": "localhost:1080",
+    "slurm": {
+      "sbatch": "/soft/slurm/bin/sbatch",
+      "squeue": "/soft/slurm/bin/squeue",
+      "partitions": ["test", "test-intel", "l40s", "a800", "h100"]
+    },
+    "vpn": {
+      "type": "easyconnect",
+      "server": "vpn.westlake.edu.cn",
+      "dockerCompose": "easyconnect/docker-compose.yml",
+      "startScript": "easyconnect/start_vpn.sh",
+      "sshConfig": "easyconnect/ssh_config",
+      "sshHelper": "easyconnect/ssh_helper.py"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": [".opencode/skills", ".agents/skills"]
+  },
+  "permission": {
+    "bash": {
+      "python3 *ssh_helper.py --exec *": "ask"
+    }
+  }
+}

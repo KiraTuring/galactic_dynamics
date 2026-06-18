@@ -1,0 +1,127 @@
+# pPXF Workbench
+
+Stellar kinematic extraction from OASIS IFU datacubes using pPXF + MILES templates.
+
+## Entrypoints
+
+| File | Role |
+|---|---|
+| `run_ppxf.py` | **CLI**: full pPXF pipeline (read cube → bin → log-rebin → pPXF fit → save) |
+| `plot_kin_comparison.py` | **CLI**: kinematic map comparison (pPXF vs reference OASIS) |
+| `plot_scatter_comparison.py` | **CLI**: bin-by-bin scatter comparison (pPXF vs reference) |
+| `ppxf.ipynb` | Interactive: exploration, parameter tuning, visualization of pPXF results |
+| `ppxfprep.py` | Library: reading, binning, fitting, bootstrap, saving (imported by CLI and notebooks) |
+| `ppxf_diagnostics.py` | Library: mock spectra, MC bias simulation, diagnostic plots (imported by notebooks) |
+| `ppxf__test.py` | Smoke test (`ppxf.ppxf`, `ppxf.ppxf_util`, `ppxf.sps_util`) |
+
+## CLI Usage
+
+### `run_ppxf.py` — pPXF kinematic extraction
+
+```bash
+python run_ppxf.py NGC4621 --redshift 0.001438 [options]
+
+# Required:
+#   galaxy              Galaxy name (e.g. NGC4621)
+#   --redshift FLOAT    Galaxy redshift
+
+# Optional:
+#   --cube PATH         OASIS FITS cube (default: auto-detect from ../data/raw/{GALAXY}/oasis/)
+#   --miles PATH        MILES library dir (default: ./miles_lib/MILES_library_v9.1_FITS)
+#   --target-sn FLOAT   Voronoi target S/N (default: 60)
+#   --fwhm-gal FLOAT    Instrumental FWHM in Å (default: 5.4)
+#   --moments INT       GH moments: 4 or 6 (default: 6)
+#   --bias FLOAT        pPXF bias (default: 0.5)
+#   --degree INT        Additive polynomial degree (default: 4)
+#   --bootstrap INT     Bootstrap iterations for errors (0=skip, default: 100)
+#   --output-dir PATH   Output directory (default: output/{GALAXY})
+#   --trial-moments     Moments to test on total spectrum (default: 4 6)
+#   --ref-bins [PATH]   Use reference binning from OASIS kinematics FITS (default: auto-detect)
+```
+
+With `--ref-bins`, uses the `BINNUM` column from a reference OASIS kinematics FITS file
+instead of Voronoi binning. Output goes to `output/{GALAXY}_refbins/`.
+Auto-detects `../data/raw/{GALAXY}/oasis/kinematics_oasis_{GALAXY}.fits*`.
+
+Output files in `output/{GALAXY}/` (or `output/{GALAXY}_refbins/` with `--ref-bins`):
+- `ppxf_kins_mileslib_h{MOMENTS}_b{BIAS}.npz` — raw results (kin_list, dkin_list, x_gen, y_gen)
+- `ppxf_kins_{GALAXY}_h{MOMENTS}.fits` — SAURON-format FITS kinematics
+- `gauss_hermite_kins_h{MOMENTS}.ecsv` — GH kinematics table
+- `description.yaml` — experiment log (auto-updated by `run_ppxf.py`, see below)
+
+### `plot_kin_comparison.py` — Kinematic map comparison
+
+```bash
+python plot_kin_comparison.py NGC5813 [options]
+
+# Options:
+#   --ecsv PATH         Our pPXF ECSV file (default: output/{GALAXY}/gauss_hermite_kins_h4.ecsv)
+#   --ref PATH          Reference OASIS kinematics FITS (default: auto-detect)
+#   --cube PATH         OASIS cube for pixel coords (default: auto-detect)
+#   --target-sn FLOAT   Voronoi target S/N for bin reconstruction (default: 40)
+#   --systemic-vel FLOAT  Systemic velocity (default: median of our V)
+#   --output PATH       Output PNG (default: output/{GALAXY}/kin_comparison.png)
+```
+
+Automatically detects h5/h6 columns → 6-column layout (V, σ, h3–h6).
+Colorbar ranges symmetric about 0 for V and h3–h6; σ keeps positive range.
+
+### `plot_scatter_comparison.py` — Bin-by-bin scatter comparison
+
+```bash
+python plot_scatter_comparison.py NGC5813 [options]
+
+# Options:
+#   --ecsv PATH         Our pPXF ECSV file (default: output/{GALAXY}_refbins/gauss_hermite_kins_h4.ecsv)
+#   --ref PATH          Reference OASIS kinematics FITS (default: auto-detect)
+#   --output PATH       Output PNG (default: output/{GALAXY}_refbins/scatter_comparison.png)
+```
+
+Automatically detects h5/h6 → 2×3 layout. V subtracted by median.
+Dashed zero-lines for V and h3–h6 (not σ).
+
+## Data Layout
+
+```
+miles_lib/         # MILES stellar library v9.1 (985 FITS spectra, from tar.gz)
+output/{GALAXY}/   # Per-galaxy: .npz archives, FITS kinematics tables, ECSV kinematics
+```
+
+OASIS cubes are read from `../data/raw/{GALAXY}/oasis/` (auto-detected by `run_ppxf.py`).
+
+## Conventions
+
+- Galaxy names: uppercase NGC format (e.g., `NGC4621`)
+- Kinematics columns: `v`, `dv`, `sigma`, `dsigma`, `h3`, `dh3`, `h4`, `dh4`, `h5`, `dh5`, `h6`, `dh6`, `is_good`, `n_gh`
+- Instrumental params for NGC4621/OASIS: `fwhm_gal = 5.4 Å`, `redshift = 0.001438`
+- pPXF `bias=0.5` taken from McDermid et al. (2006)
+- Never read FITS files into context — log paths only (per parent AGENTS.md)
+
+## Key Dependencies
+
+`ppxf`, `numpy`, `scipy`, `matplotlib`, `astropy`, `corner`, `vorbin`, `plotbin`
+
+## Adding a New Galaxy
+
+1. Run pPXF fitting (OASIS cube auto-detected from `../data/raw/{GALAXY}/oasis/`):
+   ```bash
+   python run_ppxf.py NGCXXXX --redshift Z --fwhm-gal FWHM --target-sn SN
+   ```
+
+## Notes
+
+- CLI scripts are the primary interface for automated/agent-driven execution
+- Notebooks are for interactive exploration, parameter tuning, and visualization only
+- `ppxfprep.py` is the core library for the pipeline; `ppxf_diagnostics.py` contains mock/diagnostic tools for notebooks
+- The parent project AGENTS.md (`../AGENTS.md`) covers overall project conventions and cluster access
+
+## Experiment Logging
+
+Each output directory contains a `description.yaml` with two sections:
+
+- **`summary`** (manually maintained): free-text notes on findings, data provenance, and key results
+- **`data`** (manually maintained): galaxy metadata (redshift, fwhm_gal, binning source, etc.)
+- **`runs`** (auto-appended by `run_ppxf.py`): list of run records with timestamp, parameters, and output files
+
+`run_ppxf.py` automatically appends a new entry to `runs` on each successful completion.
+If `description.yaml` doesn't exist, it creates one with an empty `summary`/`data` and the new run record.

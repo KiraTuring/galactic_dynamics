@@ -1,5 +1,7 @@
 # Data files
 data/raw/
+data/processed/
+ppxf/output/
 *.fits
 *.pkl
 

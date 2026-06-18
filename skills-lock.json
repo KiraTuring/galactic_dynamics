@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "astropy-astronomy": {
+      "source": "jaechang-hits/sciagent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/scientific-computing/astropy-astronomy/SKILL.md",
+      "computedHash": "d566c605df2982012b4a28e0c5519f4cfda19d8e74a6d6ec118f7fb3b0c1ad59"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
+    }
+  }
+}

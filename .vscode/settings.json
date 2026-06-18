@@ -1,0 +1,8 @@
+{
+    "python.condaPath": "/home/haitong/miniconda3/bin/conda",
+    "python.defaultInterpreterPath": "/home/haitong/miniconda3/envs/schw/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.extraPaths": [
+        "/home/haitong/work/galactic_dynamics/JAM"
+    ]
+}
