@@ -95,13 +95,10 @@ sinfo
 由于集群不支持 SSH 密钥认证，`easyconnect/ssh_helper.py` 提供了自动输密码功能：
 
 ```bash
-# 只读探查（推荐日常用）
-python3 easyconnect/ssh_r.py 'hostname; pwd'
-python3 easyconnect/ssh_r.py 'ls /some/dir'
-python3 easyconnect/ssh_r.py 'squeue -u wanght245001'
-
-# 安全命令（不需 --exec）
+# 探查 / 安全命令（不需 --exec）
 python3 easyconnect/ssh_helper.py 'hostname; pwd'
+python3 easyconnect/ssh_helper.py 'ls /some/dir'
+python3 easyconnect/ssh_helper.py 'squeue -u wanght245001'
 
 # 写入命令（需要 --exec）
 python3 easyconnect/ssh_helper.py --exec 'mkdir /share/home/.../newdir'
@@ -110,7 +107,7 @@ python3 easyconnect/ssh_helper.py --exec 'mkdir /share/home/.../newdir'
 python3 easyconnect/ssh_helper.py -t 600 'du -sh /large/dir'
 ```
 
-**权限模型**：`ssh_r.py` 只允许只读命令（ls, du, cat 等），写入命令硬拒绝。`ssh_helper.py` 允许只读命令，写入命令（rm, mv, mkdir 等）需加 `--exec`（`-x`）。
+**权限模型**：安全命令（ls, du, cat 等）直接执行，写入命令（rm, mv, mkdir 等）需加 `--exec`（`-x`）。OpenCode 对 `--exec` 命令额外弹确认。
 
 密码硬编码在脚本中（`SSH_PASSWORD` 环境变量可覆盖）。
 
@@ -118,11 +115,13 @@ python3 easyconnect/ssh_helper.py -t 600 'du -sh /large/dir'
 
 ```bash
 # 上传（rsync，保留符号链接）
-python3 easyconnect/ssh_helper.py --rsync ./local_dir /share/home/.../target/
+python3 easyconnect/ssh_helper.py --push ./local_dir /share/home/.../target/
 
-# scp 方式
-scp -o ProxyCommand='nc -X 5 -x localhost:1080 %h %p' \
-    -P 10002 local_file wanght245001@10.28.1.66:~/target/
+# 下载
+python3 easyconnect/ssh_helper.py --pull /share/home/.../remote_data ./local_dir
+
+# 下载单个文件（无 rsync 开销）
+python3 easyconnect/ssh_helper.py --download /share/home/.../file.txt ./localfile.txt
 ```
 
 ## 停止 VPN

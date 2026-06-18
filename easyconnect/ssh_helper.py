@@ -5,7 +5,9 @@ Usage:
   python3 ssh_helper.py <command>            safe commands auto-run; write commands BLOCKED
   python3 ssh_helper.py --exec <command>     allow write/destructive commands
   python3 ssh_helper.py -t 600 <command>     custom timeout (default: 300s)
-  python3 ssh_helper.py --rsync <src> <dst>  rsync SRC to cluster
+  python3 ssh_helper.py --push <local> <remote>   upload to cluster
+  python3 ssh_helper.py --pull <remote> <local>   download from cluster
+  python3 ssh_helper.py --download <remote> <local>  pull single file
 
 Permission model:
   Read commands (ls, du, cat, stat, etc.)  -> auto
@@ -20,46 +22,35 @@ HOST = "galaxy-login"
 
 # --------------- command classification ---------------
 
-SAFE_PREFIXES = {
-    'ls', 'du', 'df', 'stat', 'cat', 'grep', 'head', 'tail', 'file', 'wc',
-    'pwd', 'hostname', 'which', 'id', 'whoami', 'uname', 'date', 'echo',
-    'sinfo', 'squeue', 'sacct', 'find', 'sort', 'uniq', 'cut', 'tr',
-    'ps', 'free', 'uptime', 'printenv', 'env', 'basename', 'dirname',
-    'python', 'python3', 'conda', 'nproc', 'getconf', 'less', 'more',
-}
-
 WRITE_PREFIXES = {
     'rm', 'mv', 'cp', 'mkdir', 'rmdir', 'touch', 'chmod', 'chown', 'ln',
     'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'dd', 'shred', 'truncate',
     'mount', 'umount', 'kill', 'pkill', 'killall', 'reboot', 'shutdown',
     'sbatch', 'scancel', 'module', 'pip', 'pip3', 'rsync', 'scp',
     'systemctl', 'service', 'fdisk', 'mkfs', 'tee',
+    'python', 'python3', 'conda',
 }
 
-SHELL_SAFE = {'for', 'while', 'if', 'case', 'until', '[', '[[', 'cd',
-              'echo', 'export', 'source', '.', 'true', 'false', 'test',
-              'wait', 'sleep', 'let', '((', 'exit', 'return', 'shift',
-              'readonly', 'declare', 'local', 'typeset', 'alias', 'unalias'}
-
-
 def _classify(cmd):
-    """Classify a command as 'safe' or 'write'."""
-    tokens = cmd.strip().split()
-    if not tokens:
-        return 'safe'
-    first = tokens[0].split('/')[-1]
+    """Classify 'safe' or 'write'. Checks ALL chained commands (&& || ; |)."""
+    # Split by all shell chain operators into independent commands
+    segments = [cmd]
+    for sep in ('&&', '||', ';', '|'):
+        expanded = []
+        for s in segments:
+            expanded.extend(s.split(sep))
+        segments = expanded
 
-    if first in SHELL_SAFE or first in SAFE_PREFIXES:
-        return 'safe'
-    if first in WRITE_PREFIXES:
-        return 'write'
+    # If any segment starts with a write command, the whole command is write
+    for seg in segments:
+        tokens = seg.strip().split()
+        if not tokens:
+            continue
+        first = tokens[0].split('/')[-1]
+        if first in WRITE_PREFIXES:
+            return 'write'
 
-    for seg in cmd.split('|'):
-        seg_tokens = seg.strip().split()
-        if seg_tokens:
-            if seg_tokens[0].split('/')[-1] in WRITE_PREFIXES:
-                return 'write'
-
+    # Check redirects (write to files)
     if '>' in cmd:
         return 'write'
 
@@ -199,21 +190,24 @@ if __name__ == "__main__":
                     help="Allow write/destructive commands")
     ap.add_argument("-t", "--timeout", type=int, default=300,
                     help="Command timeout in seconds (default: 300)")
-    ap.add_argument("--rsync", nargs=2, metavar=("SRC", "DST"),
-                    help="rsync SRC to DST (local->cluster by default, --pull to reverse)")
-    ap.add_argument("--pull", action="store_true",
-                    help="With --rsync: pull from cluster to local (cluster->local)")
+    ap.add_argument("--push", nargs=2, metavar=("LOCAL", "REMOTE"),
+                    help="rsync LOCAL to cluster:REMOTE")
+    ap.add_argument("--pull", nargs=2, metavar=("REMOTE", "LOCAL"),
+                    help="Pull from cluster:REMOTE to LOCAL")
     ap.add_argument("--download", nargs=2, metavar=("REMOTE", "LOCAL"),
                     help="Download a file from cluster via ControlMaster (noise-free)")
     args = ap.parse_args()
 
-    # --- rsync mode ---
-    if args.rsync:
+    # --- sync modes ---
+    for flag, direction in [('push', 'push'), ('pull', 'pull')]:
+        paths = getattr(args, flag, None)
+        if not paths:
+            continue
         if not _master_alive():
             _ensure_master()
-        src, dst = args.rsync
+        src, dst = paths
         ssh_cmd = "ssh -o ControlMaster=auto"
-        if args.pull:
+        if flag == 'pull':
             rsync_cmd = f"rsync -avz --links -e '{ssh_cmd}' {HOST}:{src} {dst}"
         else:
             rsync_cmd = f"rsync -avz --links -e '{ssh_cmd}' {src} {HOST}:{dst}"
