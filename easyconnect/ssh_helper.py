@@ -50,10 +50,6 @@ def _classify(cmd):
         if first in WRITE_PREFIXES:
             return 'write'
 
-    # Check redirects (write to files)
-    if '>' in cmd:
-        return 'write'
-
     return 'safe'
 
 

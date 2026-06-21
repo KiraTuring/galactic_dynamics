@@ -1,15 +1,11 @@
 ---
 name: schw-workflow
 description: >
-  Full AxiSchw Schwarzschild lifecycle: create model configs, submit grid runs
-  to Slurm via run.py, monitor with squeue, and post-process results. Use this
-  skill whenever the user wants to start a new AxiSchw run, submit a Schwarzschild
-  model, run BayesOpt/CmaEs, check Slurm job status, analyze chi2 convergence,
-  plot kinematics (V/sigma/h3/h4 Model vs Observed), generate 1D slit extraction,
-  2D velocity ellipsoids, mass/anisotropy profiles, test isotropy constraints
-  with rerun_nnls.py, or run analyze_results.py. Do NOT use for data preparation
-  (use galaxy-data-prep instead) or for checking pipeline architecture (read
-  AGENTS.md).
+  Full AxiSchw Schwarzschild workflow: create configs, submit model runs to Slurm,
+  monitor progress, and post-process results. Covers the complete lifecycle from
+  config creation through chi2 analysis, kinematics comparison, mass/anisotropy
+  diagnostics, and isotropy sensitivity tests. Use when starting a new model run
+  or analyzing completed grid results.
 ---
 
 # AxiSchw Workflow
@@ -53,9 +49,9 @@ cd /share/home/maoshudeLab/wanght245001/galactic_dynamics/Axi_Schwarzschild
 python scripts/run.py ../config/<name>.yaml
 ```
 
-`run.py` submits both an iterator (BayesOpt sampler) and a worker pool (MPI, 64
-processes). Workers process models from `queue.txt`; the iterator generates new
-parameters each iteration.
+`run.py` submits both an iterator (BayesOpt sampler) and a 64-process MPI pool.
+Workers process models from `queue.txt`; the iterator generates new parameters
+each iteration.
 
 ### 0c. Monitor progress
 
@@ -67,17 +63,32 @@ squeue -u wanght245001
 ls galaxy_models/<home>/ | wc -l
 
 # Queue status (Q=queued, R=running, F=finished)
-tail galaxy_models/<home>/queue.txt
+grep -c " F " galaxy_models/<home>/queue.txt
+```
+
+### MPI pool fails: fall back to independent workers
+
+If the MPI pool doesn't start (PD with `QOSMaxCpuPerUserLimit` or fails with
+`mpirun: command not found`), submit individual workers manually:
+
+```bash
+Q="../galaxy_models/<home>/queue.txt"
+for i in $(seq 0 15); do
+    sbatch -p test --cpus-per-task 1 --mem 8G -J "w-$i" \
+        --wrap "source ~/miniconda3/etc/profile.d/conda.sh && conda activate schw && python scripts/schw_proc.py -p $i -q $Q"
+done
 ```
 
 ### Common issues
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `QOSMaxCpuPerUserLimit` | CPU quota full from other jobs | Wait, or `scancel` lower-priority jobs |
-| `No such file: config/...` | Path relative to Axi_Schwarzschild | Use `../config/<name>.yaml` |
+| `QOSMaxCpuPerUserLimit` (PD) | 64-CPU MPI pool exceeds user quota | Cancel lower-priority jobs, or use independent workers above |
+| `mpirun: command not found` | `module` not sourced in non-login shell | Code now auto-sources; verify with `srun -p test -n 2 --time=2 bash -c "source /etc/profile.d/module-profile.sh && module load openmpi/4.1.8 && which mpirun"` |
+| `module: command not found` | `/etc/profile.d/module-profile.sh` not sourced | `source /etc/profile.d/module-profile.sh` before `module load` |
+| `Connection closed by UNKNOWN port` | EasyConnect VPN session expired | Re-login at http://localhost:8080 (VNC password: `opencode`) |
+| `No such file: config/...` | Config path relative to Axi_Schwarzschild | Use `../config/<name>.yaml` |
 | `MGE file ... not found` | Wrong `template_directory` | Check templates dir exists at that path |
-| Workers idle after submit | Pool still queuing | Wait for pool to show `R` in squeue |
 
 ---
 
@@ -177,6 +188,8 @@ Output: `weights_<suffix>.ecsv` + `datfil_<suffix>/` per model. Original untouch
 | Create config | `cp config/base.yaml config/new.yaml` + edit 4 fields |
 | Submit run | `run.py ../config/<name>.yaml` |
 | Check jobs | `squeue -u wanght245001` |
+| MPI verification | `srun -p test -n 2 --time=2 bash -c "source /etc/profile.d/module-profile.sh && module load openmpi/4.1.8 && which mpirun"` |
+| Independent workers | `for i in $(seq 0 15); do sbatch -p test --mem 8G --wrap "source ... && conda activate schw && python scripts/schw_proc.py -p $i -q <queue>"; done` |
 | Analyze results | `python scripts/analyze_results.py <model_dir>` |
 | Load grid | `Iterator(home_dir).get_model_list()` → `['dir','par','chi2']` |
 | Best model dir | `model_list['dir'][0]` |
