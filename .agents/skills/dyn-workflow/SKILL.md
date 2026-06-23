@@ -98,11 +98,13 @@ tail -f Trischwarzpy/log/<name>.err
 |---------|-------|-----|
 | `YAML ParserError` at `\mathrm` | LaTeX braces in flow-style `{...}` break YAML parser | Use block-style YAML (multi-line keys), never inline `{key: val}` format |
 | Job runs 3 seconds, exits | Config has `reset_existing_output=True` and output dir exists | Use `-r` flag to resume, or delete output dir |
-| Pool hangs on last few models | Worker OOM-killed (NNLS memory blowup) leaks NNLS semaphore | Kill job, keep `ncpus=64`, reduce `ncpus_weights=4`, use `strategy: cl_mean`, resume with `-r` |
-| No NNLS progress (weight solving stuck) | OOM kill from concurrent NNLS exceeding 300GB | Reduce `ncpus_weights` from 8 to 4 to limit concurrent weight solvers |
-| OOM kills observed in SLURM log | `ncpus_weights` too high for histogram data size | Each NNLS solver uses 3-5× histogram file size in RAM. With 9GB histogram, 8 concurrent = 300GB+. Set `ncpus_weights=4` for ~160GB headroom. |
-| NaN values in all_models.chi2 | `orblib_done=False` or model crashed | Run recovery script to backfill from disk |
+| `ModuleNotFoundError: No module named 'pathos'` | Using base `python3` instead of `schw` env python | Always use `/share/.../miniconda3/envs/schw/bin/python3` or `conda activate schw` first |
+| Pool hangs on last few models | Worker OOM-killed (NNLS memory blowup) leaks NNLS semaphore | Kill job, keep `ncpus=64`, reduce `ncpus_weights=4`, resume with `-r` |
+| OOM kills in SLURM log: `Detected N oom_kill events` | Concurrent NNLS solves exceed memory | Each NNLS uses **3-5× histogram file size** (~40GB per 9GB histogram). `ncpus_weights=8` → 320GB peak, exceeds 300GB. **Set `ncpus_weights=4`** (160GB safe). `ncpus=64` is fine (orbit integration is memory-light). |
+| NaN values in all_models.chi2 | `orblib_done=False` or model crashed | Run recovery script (Step 1) |
 | `No previous models found` | `reset_existing_output=True` with empty output dir | Normal for first run |
+| GP contour delta χ² too small (0-5 range) | chi2 passed as `np.log10(chi2)` instead of real chi2 | Use real `kinchi2` values. Log scaling hides the parameter landscape and makes 1σ/2σ/3σ contour lines meaningless. |
+| `python3 -c` commands time out in `ssh_helper.py` | Base python, not schw env, missing `astropy`/`pathos` | Use `conda activate schw && python3 -c "..."` or full path to schw python |
 
 ---
 
@@ -164,22 +166,47 @@ for i in idx:
 
 ### 2b. Chi2 analysis
 
+**Use `analyze_results.py` (recommended):**
+
+```bash
+# Must use schw env python (not base python3) — pathos is installed there
+SCHW=/share/home/maoshudeLab/wanght245001/miniconda3/envs/schw/bin/python3
+$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> -o dyn_models/<name> --gp
+```
+
+Generates: `chi2_landscape.png`, `convergence.png`, `histograms.png`, `gp_contour.png`.
+
+**GP contour manually:**
+
 ```python
-# GP contour plot (for completed models)
 from Trischwarzpy.mod_dyn.postproc import plot_gpcontour
 
-best = np.argmin(done['kinchi2'])
+pars = np.log10(np.vstack([done['m-bh'], done['ml']]).T)
+chi2 = done['kinchi2']        # use REAL chi2, NOT log10!
+parnames = [r'$\log M_{\rm BH}$', r'$\log M/L$']
+fig, axes = plot_gpcontour(pars, chi2, parnames=parnames, levels=20)
+```
+
+> **Important**: Pass real `kinchi2` values, not `np.log10(kinchi2)`. Log scaling makes the delta χ² scale meaningless and the 1σ/2σ/3σ black dashed contour lines (at Δχ²=2.3/6.17/11.8) won't work.
+
+**GP contour with Dynesty integration (uncertainty estimation):**
+
+```python
+from Trischwarzpy.mod_dyn.postproc import gpfit, dynesty_sample
+
 pars = np.log10(np.vstack([done['m-bh'], done['ml']]).T)
 chi2 = done['kinchi2']
-fig, axes = plot_gpcontour(pars, chi2, parnames=[r'$\log M_{\rm BH}$', r'$\log M/L$'])
-fig.savefig('chi2_landscape.png', dpi=150)
-
-# GP contour with Dynesty integration (uncertainty estimation)
-from Trischwarzpy.mod_dyn.postproc import plot_gpcontour, dynesty_sample, gpfit
-
-gp = gpfit(pars, chi2, noise=30)
+gp = gpfit(normalize_parlist(pars), chi2, noise=30)
 par_range = np.percentile(pars, [0, 100], axis=0).T
-results, rlist = dynesty_sample(gp, par_range, gpsamples=None, nlive=1000, use_log=False)
+
+# use_log=False means chi2 is real (not log-transformed)
+results, rlist = dynesty_sample(gp, par_range, gpsamples=10, nlive=1000, use_log=False)
+
+from dynesty import plotting as dyplot
+cfig, caxes = dyplot.cornerplot(
+    results, labels=parnames,
+    quantiles=(0.16, 0.5, 0.84), show_titles=True,
+    title_fmt='.3f', quantiles_2d=1.0 - np.exp(-0.5 * np.arange(3.1)**2))
 ```
 
 ### 2c. Re-run weight solver (redo_weight.py)
@@ -258,13 +285,16 @@ def plot_kincompare(kins1, kins2, labels=['Axisym', 'Triaxi'], nrow=3, ncol=2):
 | Submit with SLURM | `sbatch submit/<script>.sh` |
 | Resume from crash | `python scripts/run_bo_dynamite.py -r ../dyn_config/<name>.yaml` |
 | Check progress | `python3 -c "from astropy.table import Table; t=Table.read('dyn_models/<n>/all_models.ecsv'); print(sum(t['all_done']),'/',len(t))"` |
+| Monitor OOM | `grep oom_kill Trischwarzpy/log/<name>.err` |
 | Recover models (post-crash) | Run recovery script (Step 1), then resume with `-r` |
+| Analyze results | `$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> -o dyn_models/<name> --gp` |
 | Load results | `Configuration(config, reset_existing_output=False)` + `dyn.plotter.Plotter(config=c)` |
 | Best model | `plotter.all_models.get_best_n_models_idx(n=10)` |
-| GP contour | `plot_gpcontour(pars, chi2, parnames=...)` |
-| Dynesty sampling | `dynesty_sample(gp, par_range, nlive=1000)` |
+| GP contour | `plot_gpcontour(pars, chi2, parnames=...)` — use real chi2, not log10! |
+| Dynesty sampling | `dynesty_sample(gp, par_range, gpsamples=10, nlive=1000, use_log=False)` |
 | Resolve weights | `resolve_weight(model, solver='scipy')` |
 | Update chi2 table | `update_chi2_table(home_dir, expr='-new')` |
 | Kinematics maps | `plotter.plot_kinematic_maps(kin_set='all')` |
 | Anisotropy | `anisotropy_single(model)` → `(sigmas, moments, rr)` |
+| OOM-safe config | `ncpus: 64, ncpus_weights: 4` (orbit is memory-light, NNLS needs 3-5× histogram RAM) |
 | Compare Axi vs Triax | `plot_kincompare(m_axi.kmod, m_dyn.kmod, ['Axisym','Triaxi'])` |
