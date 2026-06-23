@@ -5,8 +5,7 @@
   },
   "permission": {
     "bash": {
-      "*ssh_helper.py*-x*": "ask",
-      "*ssh_helper.py*--exec*": "ask"
+      "python3 *ssh_helper.py --exec *": "ask"
     }
   }
 }
