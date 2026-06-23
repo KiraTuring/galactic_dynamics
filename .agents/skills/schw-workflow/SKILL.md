@@ -21,7 +21,10 @@ cd Axi_Schwarzschild
 python scripts/run.py ../config/<galaxy>.yaml
 
 # Analyze completed results
-python scripts/analyze_results.py ../galaxy_models/<model_dir>
+python scripts/analyze_results.py ../galaxy_models/<model_dir> -o results/<name>/
+
+# Download to local for viewing
+ls results/<name>/
 ```
 
 ---
@@ -123,7 +126,7 @@ m = Model(work_dir, aperture_exprs=['_o', '_s'])
 ```python
 # Built-in GP contour plot (returns (fig, axes) tuple)
 fig, _ = iter0.plot_chi2_grid(size=12)
-fig.savefig('chi2_landscape.png', dpi=150, bbox_inches='tight')
+fig.savefig('results/<name>/chi2_landscape.png', dpi=150, bbox_inches='tight')
 ```
 
 ```python
@@ -190,7 +193,8 @@ Output: `weights_<suffix>.ecsv` + `datfil_<suffix>/` per model. Original untouch
 | Check jobs | `squeue -u wanght245001` |
 | MPI verification | `srun -p test -n 2 --time=2 bash -c "source /etc/profile.d/module-profile.sh && module load openmpi/4.1.8 && which mpirun"` |
 | Independent workers | `for i in $(seq 0 15); do sbatch -p test --mem 8G --wrap "source ... && conda activate schw && python scripts/schw_proc.py -p $i -q <queue>"; done` |
-| Analyze results | `python scripts/analyze_results.py <model_dir>` |
+| Analyze results | `python scripts/analyze_results.py <model_dir> -o results/<name>/` |
+| Output location | `results/<name>/` (default: same as model_dir) |
 | Load grid | `Iterator(home_dir).get_model_list()` → `['dir','par','chi2']` |
 | Best model dir | `model_list['dir'][0]` |
 | Open model | `Model(dir, aperture_exprs=['_o','_s'])` |
