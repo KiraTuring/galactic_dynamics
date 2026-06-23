@@ -1,26 +1,38 @@
 # Galactic Dynamics Project
 
 ## Overview
-Dynamical modeling of galaxies (JAM, AxiSchw, future: Dynamite).
+Dynamical modeling of galaxies (JAM, AxiSchw, Dynamite).
 
 ## Repository Structure
+
+### 本地（本机 WSL2）
 ```
 galactic_dynamics/
-├── data/
-│   ├── raw/                # Original FITS & raw tables (per galaxy)
-│   └── processed/          # MGE, aperture, bins, kinematics (per galaxy)
-├── shared_utils/           # Shared preprocessing utilities (future)
-├── JAM/
-│   ├── jam_fit/            # Core JAM library
-│   ├── configs/{galaxy}/   # Model config YAML files
-│   ├── scripts/            # Main entry points & utilities
-│   ├── notebooks/          # Exploration & visualization
-│   └── AGENTS.md           # JAM-specific conventions
-├── Axi_Schwarzschild/      # Axisymmetric Schwarzschild orbit-superposition code
-├── results/
-│   └── JAM/{galaxy}/{model}/
-├── .gitignore
-└── README.md
+├── Axi_Schwarzschild/      # 轴对称 Schwarzschild（含编译好的 Fortran）
+├── Trischwarzpy/           # Dynamite wrapper（Dynamite 核心仅在集群）
+│   ├── scripts/            # run_bo_dynamite.py, analyze_results.py
+│   ├── mod_dyn/            # BayesOpt, 配置, 后处理
+│   └── trischwpy/          # Dynamite 包装层 + 三轴数学工具
+├── JAM/                    # Jeans Anisotropic MGE 建模
+├── data/                   # 本地观测数据
+├── easyconnect/            # VPN + SSH 工具
+├── results/                # 本地分析结果
+└── .agents/skills/         # OpenCode skills
+
+### 集群（西湖大学 HPC）
+通过 EasyConnect VPN 访问。本地仓库的代码副本通过 `git push/pull` 同步。
+```
+galactic_dynamics/
+├── templates/              # 各星系数据模板（MGE, kinematics）
+├── dyn_config/             # Dynamite 模型配置 YAML
+├── dyn_models/             # Dynamite 模型输出
+├── galaxy_models/          # AxiSchw 模型输出
+├── galaxy_data/            # 原始 FITS 数据
+├── dynamite/               # Dynamite 源代码（安装版在 schw env 里）
+├── _archive/               # 归档数据
+├── config/                 # AxiSchw 旧配置
+├── JAM/                    # JAM 项目副本
+└── notebooks/              # 分析笔记本
 ```
 
 ## Conventions
@@ -33,7 +45,12 @@ galactic_dynamics/
 ## Data Rules
 - Never read FITS files into context — log paths only
 - `data/raw/` and `results/` are git-ignored
-- Dynamite data lives in `data/processed/{galaxy}-dyn/` and `{galaxy}-gh/`
+- **Never overwrite existing results without explicit user approval.**
+  Before writing to `results/` or `data/processed/`, check if data already exists.
+  If so, ask the user whether to overwrite, skip, or use a new directory name.
+  Scientific data must be traceable and reproducible — accidental deletion
+  of hours-long Schwarzschild runs is unacceptable.
+- Dynamite 数据流: 本地 `data/processed/` → 上传 → 集群 `templates/` → `dyn_config/xxx.yaml` → `dyn_models/<name>/`
 
 ## Axi_Schwarzschild Pipeline
 Axisymmetric Schwarzschild orbit-superposition dynamical modeling.
@@ -44,9 +61,24 @@ Axisymmetric Schwarzschild orbit-superposition dynamical modeling.
 - **Parallel**: `pool_generate.py`
 - Requires a compiled `Schwarzschild/` Fortran library.
 
+## Trischwarzpy (Dynamite) Pipeline
+Triaxial Schwarzschild orbit-superposition dynamical modeling. Dynamite 核心库仅安装在集群 `schw` conda env 中，本机没有。
+- **入口**: `python scripts/run_bo_dynamite.py <config> [-r]`
+- **配置**: Dynamite 原生 YAML (`system_components` 格式)
+- **并行**: 单节点 multiprocessing（`ncpus` pool workers + `ncpus_weights` NNLS semaphore）
+- **恢复**: `-r`/`--resume` 从已有输出继续
+- **Git**: 独立仓库，分支 `modified_dyn`，remote `dsimon45/Trischwarzpy.git`
+- **关键陷阱**: NNLS 内存爆炸（`ncpus_weights=4` 而非 8）；YAML LaTeX 花括号冲突；Pool 死锁
+- 完整文档见 `.agents/skills/dyn-workflow/SKILL.md` 和 `Trischwarzpy/AGENTS.md`
+
 ## Environment
 - Python 3.11+
 - Key dependencies: jampy, dynesty, cmaes, adamet, mgefit, plotbin, astropy
+- 集群 conda env: `schw`（含 dynamite, pathos, skopt, mpi4py 等）
+- 注意: 集群 `python3` 是 base env，Dynamite 必须用 `schw` env
+  ```
+  /share/.../miniconda3/envs/schw/bin/python3
+  ```
 
 ## 计算集群（西湖大学）
 
@@ -66,6 +98,14 @@ python3 easyconnect/ssh_helper.py '/soft/slurm/bin/squeue -u wanght245001'
 
 # 提交作业
 python3 easyconnect/ssh_helper.py 'export PATH=/soft/slurm/bin:$PATH && sbatch job.sh'
+
+# 写命令需加 --exec/-x
+python3 easyconnect/ssh_helper.py --exec 'sbatch job.sh'
+
+# 上传/下载文件
+python3 easyconnect/ssh_helper.py --push local_file cluster_path
+python3 easyconnect/ssh_helper.py --pull cluster_path local_path
+python3 easyconnect/ssh_helper.py --download cluster_file local_path
 ```
 
 ### 主机别名（`~/.ssh/config`）
@@ -76,6 +116,7 @@ python3 easyconnect/ssh_helper.py 'export PATH=/soft/slurm/bin:$PATH && sbatch j
 - 项目目录: `/share/home/maoshudeLab/wanght245001/galactic_dynamics/`
 - Slurm: `/soft/slurm/bin/`
 - Python: `/share/home/maoshudeLab/wanght245001/miniconda3/bin/python3`
+- Python (schw env): `/share/home/maoshudeLab/wanght245001/miniconda3/envs/schw/bin/python3`
 
 ### 关键文件
 | 文件 | 用途 |
@@ -85,3 +126,7 @@ python3 easyconnect/ssh_helper.py 'export PATH=/soft/slurm/bin:$PATH && sbatch j
 | `easyconnect/ssh_config` | SSH 配置模板 |
 | `easyconnect/CLUSTER.md` | 完整集群文档 |
 | `opencode.jsonc` | 项目配置（含 cluster 元信息） |
+
+## Skills
+- `schw-workflow` — AxiSchw 完整工作流（配置 → 提交 → 监控 → 分析）
+- `dyn-workflow` — Dynamite 三轴完整工作流（配置 → 提交 → 恢复 → 后处理）
