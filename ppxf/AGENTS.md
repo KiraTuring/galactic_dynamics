@@ -43,6 +43,17 @@ With `--ref-bins`, uses the `BINNUM` column from a reference OASIS kinematics FI
 instead of Voronoi binning. Output goes to `output/{GALAXY}_refbins/`.
 Auto-detects `../data/raw/{GALAXY}/oasis/kinematics_oasis_{GALAXY}.fits*`.
 
+**Important**: when using `--ref-bins --moments 6`, the comparison scripts (`plot_kin_comparison.py`,
+`plot_scatter_comparison.py`) default to `h4` and non-`_refbins` paths. You must
+specify all paths explicitly:
+
+```bash
+python plot_kin_comparison.py NGC4564 \
+    --ecsv output/NGC4564_refbins/gauss_hermite_kins_h6.ecsv \
+    --ref ../data/raw/NGC4564/oasis/kinematics_oasis_NGC4564.fits.gz \
+    --output output/NGC4564_refbins/kin_comparison_h6.png
+```
+
 Output files in `output/{GALAXY}/` (or `output/{GALAXY}_refbins/` with `--ref-bins`):
 - `ppxf_kins_mileslib_h{MOMENTS}_b{BIAS}.npz` — raw results (kin_list, dkin_list, x_gen, y_gen)
 - `ppxf_kins_{GALAXY}_h{MOMENTS}.fits` — SAURON-format FITS kinematics
@@ -93,9 +104,21 @@ OASIS cubes are read from `../data/raw/{GALAXY}/oasis/` (auto-detected by `run_p
 
 - Galaxy names: uppercase NGC format (e.g., `NGC4621`)
 - Kinematics columns: `v`, `dv`, `sigma`, `dsigma`, `h3`, `dh3`, `h4`, `dh4`, `h5`, `dh5`, `h6`, `dh6`, `is_good`, `n_gh`
-- Instrumental params for NGC4621/OASIS: `fwhm_gal = 5.4 Å`, `redshift = 0.001438`
+- Instrumental FWHM for all OASIS data: `fwhm_gal = 5.4 Å`
 - pPXF `bias=0.5` taken from McDermid et al. (2006)
 - Never read FITS files into context — log paths only (per parent AGENTS.md)
+
+### Known Galaxy Parameters
+
+| Galaxy | redshift | N_bins (OASIS) | Notes |
+|--------|----------|----------------|-------|
+| NGC3379 | 0.003026 | 961 | Large — skip bootstrap (`--bootstrap 0`) |
+| NGC4564 | 0.003809 | 370 | |
+| NGC4621 | 0.001438 | 618 | |
+| NGC5813 | 0.006540 | 459 | |
+| NGC5845 | 0.005550 | 320 | |
+
+Redshifts from NED (query via `.agents/skills/galaxy-data-prep/scripts/query_ned.py`).
 
 ## Key Dependencies
 
@@ -114,6 +137,36 @@ OASIS cubes are read from `../data/raw/{GALAXY}/oasis/` (auto-detected by `run_p
 - Notebooks are for interactive exploration, parameter tuning, and visualization only
 - `ppxfprep.py` is the core library for the pipeline; `ppxf_diagnostics.py` contains mock/diagnostic tools for notebooks
 - The parent project AGENTS.md (`../AGENTS.md`) covers overall project conventions and cluster access
+
+## Performance
+
+Bootstrap error estimation dominates runtime (100 iterations × N_bins × pPXF fit).
+
+| Bins | Main fit | Bootstrap | Guideline |
+|------|----------|-----------|-----------|
+| ~320 | ~8s | ~420s | Default (`--bootstrap 100`) |
+| ~370 | ~10s | ~600s | Default |
+| ~460 | ~15s | ~800s | Borderline |
+| ~620 | ~20s | ~1000s | Consider `--bootstrap 50` |
+| ~960 | ~18s | ~1600s* | **Must use `--bootstrap 0`** |
+
+*Estimated. Bootstrap scales roughly O(N_bins) per iteration.
+
+When running in background / redirecting to log files, use `python -u` to disable
+stdout buffering — otherwise no progress output appears until the process exits.
+
+## Debugging
+
+- **Background processes with conda**: `source activate` may fail in subprocesses.
+  Use the full Python path: `/path/to/miniconda3/envs/schw/bin/python3`.
+
+- **Reference FITS extension**: files are `.fits.gz` not `.fits`. Auto-detect handles
+  this, but manually specified `--ref` must include the full filename with `.gz`.
+
+- **Comparison script default paths**: `plot_kin_comparison.py` defaults to
+  `output/{GALAXY}/gauss_hermite_kins_h4.ecsv`. When you used `--ref-bins` and/or
+  `--moments 6`, the actual output is under `output/{GALAXY}_refbins/` with `h6`.
+  Explicitly pass `--ecsv`, `--ref`, and `--output`.
 
 ## Experiment Logging
 

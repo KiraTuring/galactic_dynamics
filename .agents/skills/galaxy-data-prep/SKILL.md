@@ -147,6 +147,27 @@ The same angle appears in three places with different representations:
 
 All are equivalent; `create_kin_input` handles the conversion internally.
 
+### Redshift (from NED)
+
+The McDermid+2006 table only has distances, not redshifts. Use `query_ned.py` to
+fill the missing value before or after `write_description.py`:
+
+```bash
+python .agents/skills/galaxy-data-prep/scripts/query_ned.py NGC4564
+# Galaxy              z     flag        V Morphology
+# --------------------------------------------------------------
+# NGC4564      0.003809      SUN     1142 G
+
+# Or auto-fill description.yaml:
+python .agents/skills/galaxy-data-prep/scripts/query_ned.py NGC4564 --fill-description
+```
+
+Alternatively, import for programmatic use:
+```python
+from query_ned import query_galaxy
+z = query_galaxy("NGC4564")["redshift"]  # 0.003809
+```
+
 ### description.yaml format
 
 Auto-generated stub with embedded McDermid+2006 Table 1 data. Fields marked
@@ -203,9 +224,9 @@ python .agents/skills/galaxy-data-prep/scripts/update_description.py NGC4552 \
 python .agents/skills/galaxy-data-prep/scripts/update_description.py NGC4552 \
     --jam '{"name":"psf_free","chi2":2114,"q":0.695,"lg_mbh":9.09,"lg_ml":0.594,"ratio":1.097,"psf_source":"free"}'
 
-# Replace an existing model (matched by name)
+# Replace an existing model (matched by name) — requires --overwrite
 python .agents/skills/galaxy-data-prep/scripts/update_description.py NGC4552 \
-    --jam-replace '{"name":"default","chi2":2277,"q":0.515,"lg_mbh":8.80}'
+    --jam '{"name":"default","chi2":2277,"q":0.515,"lg_mbh":8.80}' --overwrite
 
 # ---- top-level fields ----
 
@@ -219,7 +240,7 @@ python .agents/skills/galaxy-data-prep/scripts/update_description.py NGC4552 \
 **Python API** (importable from other scripts):
 
 ```python
-from update_description import append_log, set_field, append_jam_model, replace_jam_model
+from update_description import append_log, set_field, update_jam_model
 
 append_log("NGC4552", step="PSF fit",
            notes="sigma1=0.291, sigma2=1.320, chi2=0.021")
@@ -228,7 +249,7 @@ set_field("NGC4552",
           data_quality="HST image marginal, use with caution",
           redshift="0.0035")
 
-append_jam_model("NGC4552",
+update_jam_model("NGC4552",
                  name="psf_free", chi2=2114, q=0.695,
                  lg_mbh=9.09, lg_ml=0.594, ratio=1.097,
                  psf_source="free")
@@ -388,6 +409,7 @@ jam_models:
 |--------|----------|---------|
 | `prep_oasis_batch.py` | `scripts/` | Step 1: OASIS pretreatment for a galaxy |
 | `prep_sauron_batch.py` | `scripts/` | SAURON preproc: kin→_s files, sigma offset, PSF, combine |
+| `query_ned.py` | `.agents/skills/galaxy-data-prep/scripts/` | Query NED for redshift, morphology, coords |
 | `write_description.py` | `.agents/skills/galaxy-data-prep/scripts/` | Regenerate description.yaml stub |
 | `update_description.py` | `.agents/skills/galaxy-data-prep/scripts/` | Append/update description.yaml fields |
 | `generate_kin_input.py` | `Axi_Schwarzschild/data_prep/` | Low-level: aperture/bins/kin from raw FITS |
