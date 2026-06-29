@@ -113,6 +113,7 @@ tail -f Trischwarzpy/log/<name>.err
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| `sbatch` returns, but `squeue` shows **PD**, not R | Jobs start pending. SLURM takes seconds to minutes to allocate resources. | Check again after 10-30s. PD ≠ failed — it means waiting for a free node. |
 | `YAML ParserError` at `\mathrm` | LaTeX braces in flow-style `{...}` break YAML parser | Use block-style YAML (multi-line keys), never inline `{key: val}` format |
 | Job runs 3 seconds, exits | Config has `reset_existing_output=True` and output dir exists | Use `-r` flag to resume, or delete output dir |
 | `ModuleNotFoundError: No module named 'pathos'` | Using base `python3` instead of `schw` env python | Always use `/share/.../miniconda3/envs/schw/bin/python3` or `conda activate schw` first |
