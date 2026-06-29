@@ -146,5 +146,6 @@ python3 easyconnect/ssh_helper.py --download cluster_file local_path
 | `opencode.jsonc` | 项目配置（含 cluster 元信息） |
 
 ## Skills
+- `mge-fitting` — 从 HST 图像拟合 MGE 光度模型（Cappellari 2002, mgefit）
 - `schw-workflow` — AxiSchw 完整工作流（配置 → 提交 → 监控 → 分析）
 - `dyn-workflow` — Dynamite 三轴完整工作流（配置 → 提交 → 恢复 → 后处理）
