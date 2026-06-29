@@ -242,16 +242,44 @@ update_chi2_table('../dyn_models/<name>', expr='-new')  # update all_models.ecsv
 
 ### 2d. Kinematic maps
 
-```python
-# Built-in (via plotter, generates maps for all models)
-plotter.plot_kinematic_maps(kin_set='all', cbar_lims='default')
+**Quick summary plots (recommended):**
+```bash
+# Single model (AxiSchw + Dynamite + 3-panel comparison)
+SCHW=/share/home/maoshudeLab/wanght245001/miniconda3/envs/schw/bin/python3
+$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> --kinmap --axi galaxy_models/<axi_name>
+```
+Generates:
+- `kinmap_axi.png` — AxiSchw 3-row layout (Observed | Model | Residual × V/σ/h3/h4)
+- `kinmap_dyn.png` — Dynamite 3-row layout
+- `kinmap_compare.png` — 4×3 comparison (AxiSchw | Dynamite | Residual × V/σ/h3/h4)
 
-# For a specific model
-m = plotter.all_models.get_model_from_row(idx)
-# .kmod holds the fitted kinematics arrays
+**Manual comparison (reusing AxiSchw geometry):**
+```python
+from copy import deepcopy
+from schwarzpy.model import Model, display_bins_combined
+from schwarzpy.grid import Iterator
+
+# Load AxiSchw model as geometric base
+iter_axi = Iterator('../galaxy_models/<axi_name>')
+m_axi = iter_axi.get_best_model(aperture_exprs=['_o', '_s'])
+
+# Load Dynamite kinematic fits
+from astropy.table import vstack
+o = ascii.read('dyn_models/<name>/models/<best_dir>/model_gh_kins_oasis_fit.ecsv')
+s = ascii.read('dyn_models/<name>/models/<best_dir>/model_gh_kins_atlas3d_fit.ecsv')
+gh = vstack([o, s])
+
+# Build Dynamite model (deepcopy + replace kmod)
+m_dyn = deepcopy(m_axi)
+for i, name in enumerate(['v','sigma','h3','h4','h5','h6']):
+    m_dyn.kmod[:, i] = gh[name]
+
+# Plot separately
+m_axi.plot_kinematics()
+m_dyn.plot_kinematics(row_obs=0, row_model=1, row_res=2)  # standard 3-row
 ```
 
-### 2e. Anisotropy
+### 2e. Kinematic maps
 
 ```python
 from Trischwarzpy.mod_dyn.helper import anisotropy_single
