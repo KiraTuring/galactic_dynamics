@@ -15,9 +15,17 @@ Permission model:
   No --exec with write command             -> blocked with error
 """
 
-import os, sys, subprocess, time, pty, select, argparse, termios, tempfile
+import os
+import sys
+import subprocess
+import time
+import pty
+import select
+import argparse
+import termios
+import tempfile
 
-PASSWORD = os.environ.get("SSH_PASSWORD") or "R3w44CWWc*GATbk"
+PASSWORD = os.environ.get("SSH_PASSWORD") or "CWWc*GATbkR3w44"
 HOST = "galaxy-login"
 
 # --------------- command classification ---------------
@@ -30,6 +38,7 @@ WRITE_PREFIXES = {
     'systemctl', 'service', 'fdisk', 'mkfs', 'tee',
     'python', 'python3', 'conda',
 }
+
 
 def _classify(cmd):
     """Classify 'safe' or 'write'. Checks ALL chained commands (&& || ; |)."""
@@ -80,6 +89,8 @@ def _ensure_master():
             ["setsid", "ssh", "-MNf", "-o", "ControlPersist=4h", HOST],
             env=env, capture_output=True, timeout=15
         )
+    except subprocess.TimeoutExpired:
+        pass
     finally:
         try:
             os.remove(script_path)

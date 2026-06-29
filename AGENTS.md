@@ -61,6 +61,24 @@ Axisymmetric Schwarzschild orbit-superposition dynamical modeling.
 - **Parallel**: `pool_generate.py`
 - Requires a compiled `Schwarzschild/` Fortran library.
 
+## JAM — jampy Versions
+
+JAM-fit maintains two branches for different jampy versions:
+
+| Branch | jampy | Notes |
+|--------|-------|-------|
+| `JAM:` `dev` | 8.1.4 | Legacy MGE API, `logistic=True` keyword |
+| `JAM:` `dev-jampy9` | 9.0.0+ | Tuple MGE API, callable `beta`, no `align` |
+
+Switch environment + branch together:
+
+```bash
+conda activate schw  && cd JAM && git checkout dev        # jampy 8.1.4
+conda activate schw9 && cd JAM && git checkout dev-jampy9  # jampy 9.0.0
+```
+
+Full migration notes: `JAM/jampy9-notes.md`.
+
 ## Trischwarzpy (Dynamite) Pipeline
 Triaxial Schwarzschild orbit-superposition dynamical modeling. Dynamite 核心库仅安装在集群 `schw` conda env 中，本机没有。
 - **入口**: `python scripts/run_bo_dynamite.py <config> [-r]`

@@ -5,15 +5,17 @@ Update description.yaml for a galaxy. Designed to be both importable and CLI-cal
 Usage (CLI):
     python update_description.py NGC4552 --log "SAURON done" "PA diff=1.0 deg"
     python update_description.py NGC4552 --set data_quality "new text"
-    python update_description.py NGC4552 \
-        --jam '{"name":"psf_free","chi2":2114,"q":0.695,"ratio":1.097,"lg_mbh":9.09,"lg_ml":0.594,"psf_source":"free"}' \n
+    python update_description.py NGC4552 \\
+        --jam '{"name":"psf_free","chi2":2114,"q":0.695,"ratio":1.097,"lg_mbh":9.09,"lg_ml":0.594,"psf_source":"free"}'
+    python update_description.py NGC4552 \\
+        --jam '{"name":"default","chi2":2277}' --overwrite
     python update_description.py NGC4552 --jam-file psf_result.yaml
 
 Usage (Python):
-    from update_description import append_log, set_field, append_jam_model
+    from update_description import append_log, set_field, update_jam_model
     append_log("NGC4552", date="2026-01-01", step="PSF fit", notes="sigma=0.29")
-    set_field("NGC4552", data_quality="...", redshift="0.003")
-    append_jam_model("NGC4552", name="default", chi2=2277, q=0.515, ...)
+    set_field("NGC4552", data_quality="...", redshift="0.003", overwrite=True)
+    update_jam_model("NGC4552", name="default", chi2=2277, q=0.515, overwrite=True)
 """
 
 import argparse
@@ -75,41 +77,40 @@ def append_log(galaxy, *, step, notes, log_date=None, root=None):
     print(f"  [{galaxy}] log appended: {step}")
 
 
-def set_field(galaxy, root=None, **kwargs):
-    """Set top-level fields. e.g. set_field('NGC4552', data_quality='...', redshift='0.003')"""
+def set_field(galaxy, root=None, overwrite=False, **kwargs):
+    """Set top-level fields. e.g. set_field('NGC4552', data_quality='...', redshift='0.003', overwrite=True)"""
     if not kwargs:
         return
     data, path = _read(galaxy, root)
+    if not overwrite:
+        existing = [k for k in kwargs if k in data and data[k] is not None]
+        if existing:
+            print(f"  [{galaxy}] SKIPPED: fields already exist (use overwrite=True): {existing}")
+            return
     data.update(kwargs)
     _write(data, galaxy, path)
     print(f"  [{galaxy}] updated: {', '.join(kwargs.keys())}")
 
 
-def append_jam_model(galaxy, *, root=None, **kwargs):
-    """Append a jam_models entry. Pass name, chi2, q, ratio, lg_mbh, lg_ml, psf_source, etc."""
-    data, path = _read(galaxy, root)
-    data.setdefault("jam_models", []).append(kwargs)
-    _write(data, galaxy, path)
-    print(f"  [{galaxy}] jam model appended: {kwargs.get('name', '?')}")
-
-
-def replace_jam_model(galaxy, *, root=None, **kwargs):
-    """Replace an existing jam_models entry (matched by name)."""
+def update_jam_model(galaxy, *, root=None, overwrite=False, **kwargs):
+    """Add or replace a jam_models entry (matched by name). Requires overwrite=True to replace an existing entry."""
     name = kwargs.get("name")
     if not name:
-        raise ValueError("Must specify 'name' to replace a jam model")
+        raise ValueError("Must specify 'name' for jam model entry")
     data, path = _read(galaxy, root)
     models = data.setdefault("jam_models", [])
     for i, m in enumerate(models):
         if m.get("name") == name:
+            if not overwrite:
+                print(f"  [{galaxy}] SKIPPED: model '{name}' already exists (use overwrite=True to replace)")
+                return
             models[i] = kwargs
             _write(data, galaxy, path)
             print(f"  [{galaxy}] jam model replaced: {name}")
             return
-    # Not found, append
     models.append(kwargs)
     _write(data, galaxy, path)
-    print(f"  [{galaxy}] jam model appended (not found to replace): {name}")
+    print(f"  [{galaxy}] jam model appended: {name}")
 
 
 # ── CLI ─────────────────────────────────────────────────────
@@ -123,11 +124,11 @@ def main():
     parser.add_argument("--set", nargs=2, metavar=("KEY", "VALUE"),
                         action="append", help="Set a top-level field (repeatable)")
     parser.add_argument("--jam", metavar="JSON",
-                        help="Append jam model as JSON string")
-    parser.add_argument("--jam-replace", metavar="JSON",
-                        help="Replace or append jam model (matched by name)")
+                        help="Add or replace jam model (append if new, replace if name exists + --overwrite)")
     parser.add_argument("--jam-file", metavar="YAML_PATH",
-                        help="Read jam model params from a YAML file")
+                        help="Read jam model params from a YAML file and append")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Allow overwriting existing jam model entries or description fields")
     args = parser.parse_args()
 
     did_something = False
@@ -139,27 +140,22 @@ def main():
 
     if args.set:
         kv = {k: v for k, v in args.set}
-        set_field(args.galaxy, **kv)
+        set_field(args.galaxy, overwrite=args.overwrite, **kv)
         did_something = True
 
-    for flag, replace in [("--jam", False), ("--jam-replace", True)]:
-        json_str = getattr(args, flag.lstrip("-").replace("-", "_"), None)
-        if json_str:
-            try:
-                d = json.loads(json_str)
-            except json.JSONDecodeError as e:
-                print(f"Error parsing {flag}: {e}")
-                sys.exit(1)
-            if replace:
-                replace_jam_model(args.galaxy, **d)
-            else:
-                append_jam_model(args.galaxy, **d)
-            did_something = True
+    if args.jam:
+        try:
+            d = json.loads(args.jam)
+        except json.JSONDecodeError as e:
+            print(f"Error parsing --jam JSON: {e}")
+            sys.exit(1)
+        update_jam_model(args.galaxy, overwrite=args.overwrite, **d)
+        did_something = True
 
     if args.jam_file:
         with open(args.jam_file) as f:
             d = yaml.safe_load(f)
-        append_jam_model(args.galaxy, **d)
+        update_jam_model(args.galaxy, overwrite=args.overwrite, **d)
         did_something = True
 
     if not did_something:

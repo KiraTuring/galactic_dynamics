@@ -148,9 +148,9 @@ Bootstrap error estimation dominates runtime (100 iterations × N_bins × pPXF f
 | ~370 | ~10s | ~600s | Default |
 | ~460 | ~15s | ~800s | Borderline |
 | ~620 | ~20s | ~1000s | Consider `--bootstrap 50` |
-| ~960 | ~18s | ~1600s* | **Must use `--bootstrap 0`** |
+| ~960 | ~15s | ~1150s | **Must use `--bootstrap 0`** (or `setsid` for background) |
 
-*Estimated. Bootstrap scales roughly O(N_bins) per iteration.
+Bootstrap scales roughly O(N_bins) per iteration.
 
 When running in background / redirecting to log files, use `python -u` to disable
 stdout buffering — otherwise no progress output appears until the process exits.
@@ -159,6 +159,8 @@ stdout buffering — otherwise no progress output appears until the process exit
 
 - **Background processes with conda**: `source activate` may fail in subprocesses.
   Use the full Python path: `/path/to/miniconda3/envs/schw/bin/python3`.
+  Use `setsid` to fully detach long-running processes — `nohup ... &` alone
+  may be killed when the parent shell exits:
 
 - **Reference FITS extension**: files are `.fits.gz` not `.fits`. Auto-detect handles
   this, but manually specified `--ref` must include the full filename with `.gz`.
