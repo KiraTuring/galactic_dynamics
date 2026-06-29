@@ -6,7 +6,7 @@ Pipeline:
     1. Read HST F814W drizzled image (SCI extension)
     2. find_galaxy() — locate center, ellipticity, PA
     3. sectors_photometry() — radial surface brightness in sectors
-    4. mge_fit_sectors_regularized() — fit Gaussians with regularization
+    4. mge_fit_sectors() — fit Gaussians (non-regularized, respects ngauss)
     5. Convert units: counts → AB mag/arcsec² → L⊙ pc⁻²
     6. Save results + diagnostic plots
 
@@ -39,7 +39,8 @@ from matplotlib.patches import Ellipse
 
 from mgefit.find_galaxy import find_galaxy
 from mgefit.sectors_photometry import sectors_photometry
-from mgefit.mge_fit_sectors_regularized import mge_fit_sectors_regularized
+from mgefit.mge_fit_sectors import mge_fit_sectors
+
 
 
 # --- Physical constants ---
@@ -195,7 +196,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
     print(f"PSF sigma: {sigmapsf:.2f} pix")
 
     # --- 6. MGE fit ---
-    mge = mge_fit_sectors_regularized(
+    mge = mge_fit_sectors(
         pho.radius, pho.angle, pho.counts, sec.eps,
         ngauss=ngauss,
         plot=False,
@@ -331,7 +332,7 @@ if __name__ == "__main__":
     parser.add_argument("--fwhm", type=float, default=None,
                         help="PSF FWHM in arcsec (default: 0.13 for WFPC2 F814W)")
     parser.add_argument("--ngauss", type=int, default=15,
-                        help="Number of Gaussian components (default 15)")
+                        help="Number of Gaussian components (default 20)")
     parser.add_argument("--trim", type=float, default=0.05,
                         help="Edge trim fraction (default 0.05)")
     args = parser.parse_args()
