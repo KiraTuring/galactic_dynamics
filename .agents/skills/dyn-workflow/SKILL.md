@@ -296,6 +296,7 @@ def plot_kincompare(kins1, kins2, labels=['Axisym', 'Triaxi'], nrow=3, ncol=2):
 | Monitor OOM | `grep oom_kill Trischwarzpy/log/<name>.err` |
 | Recover models (post-crash) | Run recovery script (Step 1), then resume with `-r` |
 | Analyze results | `$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> -o dyn_models/<name> --gp` |
+| Kinematic maps | `$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> --kinmap --axi galaxy_models/<axi_name>` |
 | Load results | `Configuration(config, reset_existing_output=False)` + `dyn.plotter.Plotter(config=c)` |
 | Best model | `plotter.all_models.get_best_n_models_idx(n=10)` |
 | GP contour | `plot_gpcontour(pars, chi2, parnames=...)` — use real chi2, not log10! |
