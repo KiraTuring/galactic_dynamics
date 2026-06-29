@@ -24,23 +24,25 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import numpy as np
 import yaml
+from jam_fit.utils import q2inc
 
 
 def _resolve_root():
-    """Resolve repo root by walking up from script dir until data/processed/ is found."""
+    """Resolve repo root by walking up until sauron_mge.ecsv (unique project marker) is found."""
     current = Path(__file__).resolve().parent
     for _ in range(10):
-        if (current / "data" / "processed").is_dir():
+        if (current / "data" / "processed" / "sauron_mge.ecsv").exists():
             return current
         current = current.parent
     # Fallback: try cwd
     current = Path.cwd()
     for _ in range(10):
-        if (current / "data" / "processed").is_dir():
+        if (current / "data" / "processed" / "sauron_mge.ecsv").exists():
             return current
         current = current.parent
-    raise FileNotFoundError("Cannot find repo root (data/processed/ not found walking up)")
+    raise FileNotFoundError("Cannot find repo root (sauron_mge.ecsv not found walking up)")
 
 
 def _get_path(galaxy, root=None):
@@ -97,6 +99,15 @@ def update_jam_model(galaxy, *, root=None, overwrite=False, **kwargs):
     name = kwargs.get("name")
     if not name:
         raise ValueError("Must specify 'name' for jam model entry")
+    # Auto-compute inc from q if not provided
+    if "inc" not in kwargs and "q" in kwargs:
+        root = Path(root) if root else _resolve_root()
+        mge_path = root / "data" / "processed" / galaxy / "mge.ecsv"
+        if mge_path.exists():
+            from astropy.io import ascii
+            mge = ascii.read(mge_path)
+            qmin = float(np.min(mge["q"]))
+            kwargs["inc"] = round(float(q2inc(kwargs["q"], qmin)), 1)
     data, path = _read(galaxy, root)
     models = data.setdefault("jam_models", [])
     for i, m in enumerate(models):
