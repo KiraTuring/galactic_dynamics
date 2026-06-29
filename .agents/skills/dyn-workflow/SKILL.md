@@ -85,8 +85,15 @@ The `-r`/`--resume` flag sets `reset_existing_output=False`, preserving `all_mod
 # Job status
 squeue -u wanght245001
 
-# Models completed (from all_models.ecsv)
-python3 -c "from astropy.table import Table; t=Table.read('dyn_models/<name>/all_models.ecsv',format='ascii.ecsv'); print(sum(t['all_done']),'/',len(t))"
+# Per-iteration progress (best chi2, top models)
+SCHW=/share/home/maoshudeLab/wanght245001/miniconda3/envs/schw/bin/python3
+$SCHW Trischwarzpy/scripts/check_progress.py dyn_models/<name>
+
+# All models at once
+$SCHW Trischwarzpy/scripts/check_progress.py --all
+
+# Continuous watch (every 30s)
+$SCHW Trischwarzpy/scripts/check_progress.py --all --watch 30
 
 # Watch log tail
 tail -f Trischwarzpy/log/<name>.err
@@ -284,7 +291,8 @@ def plot_kincompare(kins1, kins2, labels=['Axisym', 'Triaxi'], nrow=3, ncol=2):
 | Submit new run | `cd Trischwarzpy && python scripts/run_bo_dynamite.py ../dyn_config/<name>.yaml` |
 | Submit with SLURM | `sbatch submit/<script>.sh` |
 | Resume from crash | `python scripts/run_bo_dynamite.py -r ../dyn_config/<name>.yaml` |
-| Check progress | `python3 -c "from astropy.table import Table; t=Table.read('dyn_models/<n>/all_models.ecsv'); print(sum(t['all_done']),'/',len(t))"` |
+| Check progress | `$SCHW Trischwarzpy/scripts/check_progress.py --all` |
+| Watch continuously | `$SCHW Trischwarzpy/scripts/check_progress.py --all --watch 30` |
 | Monitor OOM | `grep oom_kill Trischwarzpy/log/<name>.err` |
 | Recover models (post-crash) | Run recovery script (Step 1), then resume with `-r` |
 | Analyze results | `$SCHW Trischwarzpy/scripts/analyze_results.py dyn_models/<name> -o dyn_models/<name> --gp` |
