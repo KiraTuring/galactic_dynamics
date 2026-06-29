@@ -115,6 +115,88 @@ def _master_alive():
 
 # --------------- command execution ---------------
 
+def _diagnose(verbose=False):
+    """Pre-flight connectivity checks. Returns (ok, error_msg)."""
+    proxy_host = "localhost"
+    proxy_port = 1080
+    target_host = "10.28.1.66"
+    target_port = 10002
+
+    # 1. SOCKS5 port reachable
+    try:
+        r = subprocess.run(
+            ["nc", "-z", "-w", "3", proxy_host, str(proxy_port)],
+            capture_output=True, timeout=5
+        )
+        if r.returncode != 0:
+            return False, (
+                "VPN: SOCKS5 proxy port 1080 is not reachable.\n"
+                "  -> Run: cd easyconnect && docker compose up -d\n"
+                "  -> Then login at http://localhost:8080 (password: opencode)"
+            )
+    except FileNotFoundError:
+        return False, "VPN: 'nc' command not found. Install netcat-openbsd."
+    except subprocess.TimeoutExpired:
+        return False, (
+            "VPN: SOCKS5 proxy check timed out.\n"
+            "  -> EasyConnect container may be hung. Run: docker compose restart"
+        )
+
+    if verbose:
+        print("[OK] SOCKS5 proxy reachable")
+
+    # 2. SSH server reachable through proxy
+    try:
+        probe = subprocess.run(
+            ["bash", "-c",
+             f"echo | nc -X 5 -x {proxy_host}:{proxy_port} -w 5 {target_host} {target_port}"],
+            capture_output=True, text=True, timeout=8
+        )
+        combined = (probe.stderr + probe.stdout).lower()
+        if "ssh" in combined:
+            pass  # SSH banner received, server is reachable
+        elif "refused" in combined:
+            return False, (
+                "VPN: SOCKS5 proxy refused the connection.\n"
+                "  -> EasyConnect VPN session expired. Login at http://localhost:8080"
+            )
+        elif "failed" in combined or "error" in combined:
+            return False, (
+                "NETWORK: Cannot reach SSH server through VPN.\n"
+                f"  -> Proxy {proxy_host}:{proxy_port} -> {target_host}:{target_port}\n"
+                "  -> Check VPN login status at http://localhost:8080"
+            )
+    except subprocess.TimeoutExpired:
+        return False, (
+            "NETWORK: Connection to SSH server timed out through proxy.\n"
+            "  -> VPN may be hung. Check http://localhost:8080"
+        )
+
+    if verbose:
+        print("[OK] SSH server reachable through proxy")
+
+    return True, ""
+
+
+def _parse_pty_error(output):
+    """Parse pty SSH output for known failure patterns. Returns error msg or ''."""
+    lower = output.lower()
+    if "permission denied" in lower and "assword" not in lower:
+        return (
+            "AUTH: Password rejected by SSH server.\n"
+            "  -> Set SSH_PASSWORD env var or edit PASSWORD in ssh_helper.py"
+        )
+    if "connection refused" in lower:
+        return "SERVER: SSH server refused connection (port 10002 down?)."
+    if "connection timed out" in lower:
+        return "NETWORK: SSH connection timed out through VPN."
+    if "no route to host" in lower:
+        return "NETWORK: No route to host. Check VPN connection."
+    if "name or service not known" in lower:
+        return "DNS: Cannot resolve hostname. Check SSH config."
+    return ""
+
+
 def _pty_run(cmd, timeout=300):
     """Execute command via pty. First call auto-creates ControlMaster (via ssh_config)."""
     pid, fd = pty.fork()
@@ -169,7 +251,17 @@ def ssh_run(cmd, timeout=300):
         return result.stdout
 
     # Fallback: pty (will also create master, but slower)
-    return _pty_run(cmd, timeout)
+    ok, err = _diagnose()
+    if not ok:
+        print(f"SSH connection failed:\n{err}", file=sys.stderr)
+        sys.exit(3)
+
+    output = _pty_run(cmd, timeout)
+    auth_err = _parse_pty_error(output)
+    if auth_err and 'amd-ep4' not in output and 'Host' not in output:
+        print(f"SSH error:\n{auth_err}", file=sys.stderr)
+        sys.exit(4)
+    return output
 
 
 def _filter_output(text):
@@ -203,7 +295,18 @@ if __name__ == "__main__":
                     help="Pull from cluster:REMOTE to LOCAL")
     ap.add_argument("--download", nargs=2, metavar=("REMOTE", "LOCAL"),
                     help="Download a file from cluster via ControlMaster (noise-free)")
+    ap.add_argument("--diagnose", action="store_true",
+                    help="Run connectivity diagnosis and exit")
     args = ap.parse_args()
+
+    # --- diagnose mode ---
+    if args.diagnose:
+        ok, err = _diagnose(verbose=True)
+        if ok:
+            print("All checks passed. SSH connection should work.")
+        else:
+            print(err, file=sys.stderr)
+        sys.exit(0 if ok else 1)
 
     # --- sync modes ---
     for flag, direction in [('push', 'push'), ('pull', 'pull')]:
