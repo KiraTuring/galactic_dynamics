@@ -4,8 +4,11 @@ description: >
   Full AxiSchw Schwarzschild workflow: create configs, submit model runs to Slurm,
   monitor progress, and post-process results. Covers the complete lifecycle from
   config creation through chi2 analysis, kinematics comparison, mass/anisotropy
-  diagnostics, and isotropy sensitivity tests. Use when starting a new model run
-  or analyzing completed grid results.
+  diagnostics, and isotropy sensitivity tests. Use when starting a new axisymmetric
+  Schwarzschild model run, analyzing completed grid results, or re-running NNLS
+  with different isotropy constraints. Make sure to use this skill whenever the
+  user mentions AxiSchw, axisymmetric Schwarzschild, or orbit-superposition
+  modeling with schwarzpy.
 ---
 
 # AxiSchw Workflow
