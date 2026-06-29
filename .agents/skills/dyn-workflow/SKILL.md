@@ -42,6 +42,16 @@ cp ../dyn_config/5813-hist-bayes.yaml ../dyn_config/<new>.yaml
 
 Required edits: `name`, `input_directory` (templates/), `output_directory` (dyn_models/), parameters.
 
+**Default parameter strategy (reference JAM results):**
+- `bh` range: bracket JAM best-fit value (e.g. JAM lg_mbh=8.89 → lo=7.5, hi=10.0)
+- `ml` range: bracket JAM best-fit value (e.g. JAM lg_ml=0.59 → lo=0.2, hi=0.8)
+- `q` (intrinsic flattening): **fixed to JAM's q** (JAM fits q as a free parameter)
+- `p`: **fixed to 0.99** (near-axisymmetric limit)
+- `u`: **fixed to 0.999** (near-axisymmetric limit)
+- `generator_type`: BayesOpt
+- `strategy`: **gp** (default), `n_processes`: **64**
+- `ncpus_weights`: **4** (not 8 — prevents NNLS OOM)
+
 Key config sections:
 
 - `system_attributes`: `distMPc`, `name`, `position_angle`
@@ -327,6 +337,7 @@ def plot_kincompare(kins1, kins2, labels=['Axisym', 'Triaxi'], nrow=3, ncol=2):
 
 | Task | Command / Code |
 |------|---------------|
+| Create config | `cp ../dyn_config/base.yaml ../dyn_config/<new>.yaml` + edit bh/ml range, q=JAM q, p=0.99, u=0.999 |
 | Submit new run | `cd Trischwarzpy && python scripts/run_bo_dynamite.py ../dyn_config/<name>.yaml` |
 | Submit with SLURM | `sbatch submit/<script>.sh` |
 | Resume from crash | `python scripts/run_bo_dynamite.py -r ../dyn_config/<name>.yaml` |
