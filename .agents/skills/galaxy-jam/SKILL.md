@@ -1,3 +1,13 @@
+---
+name: galaxy-jam
+description: >
+  Create and run JAM (Jeans Anisotropic MGE) models for axisymmetric galaxies
+  using CMA-ES optimization. Use when fitting JAM dynamical models to estimate
+  black hole mass, M/L, inclination, and anisotropy from IFU kinematics. Covers
+  config creation, execution, and result logging. Requires preprocessed galaxy
+  data from the galaxy-data-prep skill.
+---
+
 # Galaxy JAM Modeling
 
 Creates and runs JAM (Jeans Anisotropic MGE) models for axisymmetric galaxies
@@ -9,7 +19,7 @@ using CMA-ES optimization.
 - PSF fitting results in `results/JAM/{galaxy}/psf_fit/`
 - Conda env: `schw`
 
-## Step 3: JAM Config + Run
+## Config & Run
 
 ### Create config
 

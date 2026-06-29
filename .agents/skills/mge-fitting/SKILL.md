@@ -4,8 +4,9 @@ description: >
   Fit Multi-Gaussian Expansion (MGE) photometric models from HST images
   using mgefit. Covers HST image selection, sector photometry, MGE fitting
   with regularization, unit conversion (counts → L⊙ pc⁻²), and diagnostic
-  plotting. Use when creating MGE models for JAM or Schwarzschild dynamical
-  modeling from HST imaging data.
+  plotting. Use whenever creating MGE models for JAM or Schwarzschild
+  dynamical modeling from HST imaging data, or when replacing an existing
+  MGE with a higher-resolution HST-based fit.
 ---
 
 # MGE Fitting from HST Images

@@ -1,3 +1,14 @@
+---
+name: galaxy-data-prep
+description: >
+  Full data preprocessing pipeline for galactic dynamics modeling. Use whenever
+  adding a galaxy to the JAM or AxiSchw Schwarzschild pipeline, preprocessing
+  raw OASIS/ATLAS3D IFU kinematics, fitting MGE photometric models, downloading
+  HST images from MAST, running multi-Gaussian PSF fitting, creating JAM config
+  YAMLs, or setting up a new galaxy directory under data/processed/. Covers the
+  full workflow from raw FITS to running JAM models.
+---
+
 # Galaxy Data Preparation Pipeline
 
 Converts raw OASIS/ATLAS3D integral-field kinematics into modelling-ready

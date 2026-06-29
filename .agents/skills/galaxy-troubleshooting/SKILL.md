@@ -1,3 +1,14 @@
+---
+name: galaxy-troubleshooting
+description: >
+  Diagnose and fix common issues across the JAM and Schwarzschild preprocessing
+  pipelines. Use when encountering errors in JAM modeling (inclination,
+  missing parameters, process hangs), PSF fitting (file not found, contour
+  crashes, bound hits), or data preprocessing (HST not found, PA mismatch,
+  MAST errors). Covers symptom → cause → fix for the most frequent pipeline
+  failures.
+---
+
 # Galaxy Pipeline Troubleshooting
 
 Common issues across the JAM and Schwarzschild preprocessing pipelines.

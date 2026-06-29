@@ -7,6 +7,16 @@ description: >
   Dynamite model grids.
 ---
 
+---
+name: dyn-workflow
+description: >
+  Full Dynamite triaxial Schwarzschild workflow: create configs, submit model
+  runs to Slurm, monitor progress, recover from failures, and post-process
+  results. Use when starting a new triaxial model run or analyzing completed
+  Dynamite model grids. Make sure to use this skill whenever the user mentions
+  Dynamite, triaxial Schwarzschild, Triscurry, or orbit-superposition modeling.
+---
+
 # Dynamite (Trischwarzpy) Workflow
 
 ## Quick start
@@ -279,7 +289,7 @@ m_axi.plot_kinematics()
 m_dyn.plot_kinematics(row_obs=0, row_model=1, row_res=2)  # standard 3-row
 ```
 
-### 2e. Kinematic maps
+### 2e. Anisotropy analysis
 
 ```python
 from Trischwarzpy.mod_dyn.helper import anisotropy_single
