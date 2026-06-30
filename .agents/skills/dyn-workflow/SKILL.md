@@ -70,18 +70,24 @@ Key config sections:
 ### 0b. Submit to Slurm
 
 ```bash
-export PATH=/soft/slurm/bin:$PATH
+# Auto-generate submit script and submit (recommended)
 cd /share/home/maoshudeLab/wanght245001/galactic_dynamics/Trischwarzpy
-sbatch submit/<script>.sh
+python scripts/run.py ../dyn_config/<name>.yaml
+
+# Custom resources
+python scripts/run.py ../dyn_config/<name>.yaml --ncpus 32 --mem 128
+
+# Resume existing run
+python scripts/run.py ../dyn_config/<name>.yaml -r
 ```
 
-SLURM template:
+This generates `submit/<name>.sh` and runs `sbatch`. The script reads `ncpus` from the config's `multiprocessing_settings.ncpus` by default.
+
+Or manually with an existing submit script:
 ```bash
-#!/bin/bash
-#SBATCH -p test,test-intel
-#SBATCH -N 1 -n 1 -c 32
-#SBATCH --mem=300g
-cd $SLURM_SUBMIT_DIR
+export PATH=/soft/slurm/bin:$PATH
+sbatch submit/<script>.sh
+```
 source ~/miniconda3/etc/profile.d/conda.sh
 conda activate schw
 python scripts/run_bo_dynamite.py ../dyn_config/<name>.yaml
@@ -338,9 +344,9 @@ def plot_kincompare(kins1, kins2, labels=['Axisym', 'Triaxi'], nrow=3, ncol=2):
 | Task | Command / Code |
 |------|---------------|
 | Create config | `cp ../dyn_config/base.yaml ../dyn_config/<new>.yaml` + edit bh/ml range, q=JAM q, p=0.99, u=0.999 |
-| Submit new run | `cd Trischwarzpy && python scripts/run_bo_dynamite.py ../dyn_config/<name>.yaml` |
-| Submit with SLURM | `sbatch submit/<script>.sh` |
-| Resume from crash | `python scripts/run_bo_dynamite.py -r ../dyn_config/<name>.yaml` |
+| Submit new run | `cd Trischwarzpy && python scripts/run.py ../dyn_config/<name>.yaml` |
+| Submit (custom resources) | `python scripts/run.py ../dyn_config/<name>.yaml --ncpus 32 --mem 128` |
+| Submit with resume | `python scripts/run.py ../dyn_config/<name>.yaml -r` |
 | Check progress | `$SCHW Trischwarzpy/scripts/check_progress.py --all` |
 | Watch continuously | `$SCHW Trischwarzpy/scripts/check_progress.py --all --watch 30` |
 | Monitor OOM | `grep oom_kill Trischwarzpy/log/<name>.err` |
