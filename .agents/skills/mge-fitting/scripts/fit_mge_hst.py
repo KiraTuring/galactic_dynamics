@@ -13,14 +13,14 @@ Usage:
     python fit_mge_hst.py <galaxy>
     python fit_mge_hst.py NGC4621
     python fit_mge_hst.py NGC4621 --fwhm 0.13 --ngauss 15
-    python fit_mge_hst.py NGC5845
+    python fit_mge_hst.py NGC5845 --filter F702W
 
 Output (data/processed/{galaxy}/):
-    mge_{filter_name}.ecsv            — MGE parameters
-    mge_{filter_name}_components.png  — Gaussian ellipses + radial profile
-    mge_{filter_name}_contours.png    — Contour overlay on image
-    mge_{filter_name}_radial.png      — Radial profile vs fit
-    mge_{filter_name}_comparison.png  — Comparison with existing MGE (if found)
+    mge_{filter}.ecsv                 — MGE parameters
+    mge_{filter}_components.png       — Gaussian ellipses + radial profile
+    mge_{filter}_contours.png         — Contour overlay on image
+    mge_{filter}_radial.png           — Radial profile vs fit
+    mge_{filter}_comparison.png       — Comparison with existing MGE (if found)
 """
 
 import argparse, glob, sys
@@ -97,14 +97,14 @@ def _read_phot_cal(path):
     return photflam, centrwv, filt
 
 
-def _find_hst_image(galaxy):
-    patterns = ["hst_*f814w*drz.fits", "hst_*f555w*drz.fits",
-                "hst_*f702w*drz.fits", "hst_*drz.fits"]
-    for p in patterns:
-        lst = sorted(glob.glob(str(DATA_RAW / galaxy / p)))
-        if lst:
-            return lst[0]
-    raise FileNotFoundError(f"No HST drz image for {galaxy} in {DATA_RAW / galaxy}/")
+def _find_hst_image(galaxy, filt="F814W"):
+    pattern = f"hst_*{filt.lower()}*drz.fits"
+    lst = sorted(glob.glob(str(DATA_RAW / galaxy / pattern)))
+    if not lst:
+        raise FileNotFoundError(
+            f"No HST {filt} drz image for {galaxy} in {DATA_RAW / galaxy}/"
+        )
+    return lst[0]
 
 
 # ---- MGE unit conversion ----
@@ -269,12 +269,12 @@ def _plot_comparison(surf, sigma, q_obs, filter_name, out_dir):
 
 # ---- pipeline ----
 
-def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
+def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None, filt="F814W"):
     out_dir = DATA_PROC / galaxy
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Locate & read image
-    hst_path = _find_hst_image(galaxy)
+    hst_path = _find_hst_image(galaxy, filt)
     print(f"\n{'=' * 60}\nMGE fit: {galaxy}\n{'=' * 60}")
     print(f"Image: {hst_path}")
     image_ma, wht, _, pixscale = read_hst_wht(hst_path)
@@ -414,7 +414,9 @@ if __name__ == "__main__":
                         help="Edge trim fraction (default 0.05)")
     parser.add_argument("--sky", type=float, default=None,
                         help="Sky background in counts/s/pix (default: auto)")
+    parser.add_argument("--filter", type=str, default="F814W", metavar="FILTER",
+                        help="HST filter (F814W, F555W, F702W; default: F814W)")
     args = parser.parse_args()
 
     fit_mge_hst(args.galaxy, fwhm=args.fwhm, ngauss=args.ngauss,
-                trim_margin=args.trim, sky=args.sky)
+                trim_margin=args.trim, sky=args.sky, filt=args.filter)
