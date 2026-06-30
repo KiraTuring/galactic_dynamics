@@ -68,6 +68,10 @@ processing_log:
   step: JAM model (default)
   notes: align=cyl, logistic=false, 4 free params. chi2=490.2, q=0.100, ratio=0.956,
     lg_mbh=8.89, lg_ml=0.588.
+- date: '2026-06-30'
+  step: JAM model (sph2)
+  notes: align=sph, logistic=true, 5 free params. chi2=392.2, q=0.219, ratio=1.404,
+    lg_mbh=8.96, lg_ml=0.550, ratio_inf=0.720.
 jam_models:
 - name: default
   chi2: 490.2
@@ -76,5 +80,15 @@ jam_models:
   lg_ml: 0.588
   ratio: 0.956
   inc: 75.8
+  psf_source: fitted (proposal 6099)
+  kinematic_source: pPXF h6 → 0±0.1 prior
+- name: sph2
+  chi2: 392.2
+  q: 0.219
+  lg_mbh: 8.96
+  lg_ml: 0.550
+  ratio: 1.404
+  ratio_inf: 0.720
+  inc: 81.4
   psf_source: fitted (proposal 6099)
   kinematic_source: pPXF h6 → 0±0.1 prior
