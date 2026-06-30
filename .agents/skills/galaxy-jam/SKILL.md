@@ -75,6 +75,62 @@ io_settings:
     work_directory: ../results/JAM/{galaxy}/{model_name}
 ```
 
+### Sph logistic template (sph2 style)
+
+For spherical alignment with logistic radial anisotropy profile (`ratio>1`, `ratio_inf<1`):
+
+```yaml
+name: sph2
+align: sph
+logistic: true
+nstep: 20000
+distMpc: 25.0
+pixsize: 0.27
+aperture_expr: _o
+kinematic_settings:
+    use_hist: false
+    h4_corr: false
+
+parameters:
+    q:
+        value: 0.2; fixed: false
+        grid_setting: {lo: 0.1, hi: 0.25, sigpar: 0.05}
+    ratio:                     # σ_θ/σ_r > 1 → tangentially biased at center
+        value: 1.1; fixed: false
+        grid_setting: {lo: 1.0, hi: 2.0, sigpar: 0.1}
+    lg_mbh:
+        value: 8.6; fixed: false
+        grid_setting: {lo: 8.0, hi: 10.0, sigpar: 0.01}
+    lg_ml:
+        value: 0.5; fixed: false
+        grid_setting: {lo: -0.5, hi: 0.7, sigpar: 0.05}
+    f_dm:
+        value: 0.0; fixed: true
+    lg_rb:
+        value: 3.0; fixed: true
+    sigma1/sigma2/weight1:
+        value: <from psf_result.yaml>; fixed: true
+    ratio_inf:                 # σ_θ/σ_r < 1 → less tangential / radial at ∞
+        value: 0.9; fixed: false
+        grid_setting: {lo: 0.5, hi: 1.0, sigpar: 0.1}
+    lg_ra:
+        value: 0.0; fixed: true
+    lg_al:
+        value: 0.3; fixed: true
+    lg_ml_inf:
+        value: 0.5; fixed: true
+
+parameter_space_settings:
+    sampler_type: Adamet
+    sampler_settings: {seed: 42, n_processes: 16}
+
+io_settings:
+    input_directory: ../data/processed/{galaxy}
+    work_directory: ../results/JAM/{galaxy}/sph2
+```
+
+5 free parameters: q, ratio, lg_mbh, lg_ml, ratio_inf.
+
 ### Critical: q upper bound
 
 The intrinsic flattening `q` appears in the inclination formula as
@@ -105,11 +161,22 @@ cd JAM && setsid /home/haitong/miniconda3/envs/schw/bin/python -u \
 **Note:** `nohup` alone is insufficient — the process may be killed when the
 parent shell exits. Use `setsid` instead.
 
-Takes 5–7 minutes (20 gen × 50 population).
+Run time depends on alignment:
+- **cyl** (analytic LOS integration): ~5–7 min
+- **sph** (numerical LOS integration): ~25–30 min
 
 ### After the run
 
-Update `description.yaml`:
+#### Compute inclination
+
+```python
+import math
+q_min = 0.263   # from description.yaml mge.q_min
+q = 0.219       # from best-fit
+inc = math.degrees(math.asin(math.sqrt((1 - q_min**2) / (1 - q**2))))
+```
+
+#### Update description.yaml
 
 ```yaml
 jam_models:
@@ -119,11 +186,22 @@ jam_models:
     lg_mbh: 8.89
     lg_ml: 0.588
     ratio: 0.956
+    inc: 75.8
     psf_source: fitted
+    kinematic_source: pPXF h6 → 0±0.1 prior
+  - name: sph2
+    chi2: 392.2
+    q: 0.219
+    lg_mbh: 8.96
+    lg_ml: 0.550
+    ratio: 1.404
+    ratio_inf: 0.720
+    inc: 81.4
+    psf_source: fitted (proposal 6099)
     kinematic_source: pPXF h6 → 0±0.1 prior
 ```
 
-Use `update_description.py` or edit the YAML directly.
+Include `ratio_inf` for logistic models and `inc` for all models. Use `update_description.py` or edit the YAML directly.
 
 ### Cleaning __pycache__
 
