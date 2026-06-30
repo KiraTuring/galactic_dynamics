@@ -77,13 +77,17 @@ def background_level(image, fraction=0.99):
 
 def estimate_sky(image, margin=0.1):
     ny, nx = image.shape
-    my, mx = int(ny * margin), int(nx * margin)
+    my, mx = max(1, int(ny * margin)), max(1, int(nx * margin))
     corners = np.concatenate([
         image[:my, :mx].ravel(), image[:my, -mx:].ravel(),
         image[-my:, :mx].ravel(), image[-my:, -mx:].ravel(),
     ])
+    corners = corners[corners > -1e6]  # exclude extreme outliers
+    if len(corners) < 10:
+        return 0.0
     lo, hi = np.percentile(corners, [5, 95])
-    return corners[(corners >= lo) & (corners <= hi)].mean()
+    clipped = corners[(corners >= lo) & (corners <= hi)]
+    return clipped.mean() if len(clipped) > 0 else 0.0
 
 
 # ---- I/O helpers ----
@@ -269,7 +273,8 @@ def _plot_comparison(surf, sigma, q_obs, filter_name, out_dir):
 
 # ---- pipeline ----
 
-def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.0, sky=None, filt="F814W"):
+def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.0, sky=None, filt="F814W",
+                outer_slope=4, tag=""):
     out_dir = DATA_PROC / galaxy
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -286,8 +291,12 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.0, sky=None, filt="F
     # 2. Trim + sky subtract + mask bad pixels
     mx = int(image_ma.shape[1] * trim_margin)
     my = int(image_ma.shape[0] * trim_margin)
-    image_trim = image_ma[my:-my, mx:-mx].data.astype(np.float64)
-    wht_trim = wht[my:-my, mx:-mx]
+    if mx == 0 and my == 0:
+        image_trim = image_ma.data.astype(np.float64)
+        wht_trim = wht
+    else:
+        image_trim = image_ma[my:-my, mx:-mx].data.astype(np.float64)
+        wht_trim = wht[my:-my, mx:-mx]
     badpixels = wht_trim <= 0
     print(f"Trimmed: {image_trim.shape}", end="")
     if badpixels.any():
@@ -346,12 +355,14 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.0, sky=None, filt="F
     # 8. Save ECSV
     table = Table({"I": surf, "sigma": sigma, "q": q_obs,
                    "pa_twist": np.zeros(ng)})
-    ecsv_path = out_dir / f"mge_{filter_name}.ecsv"
+    suffix = f"_{tag}" if tag else ""
+    ecsv_path = out_dir / f"mge_{filter_name}{suffix}.ecsv"
     ascii.write(table, ecsv_path, format="ecsv", overwrite=True)
     print(f"\nSaved: {ecsv_path}")
 
     # 9. Diagnostics
-    prefix = out_dir / f"mge_{filter_name}"
+    suffix = f"_{tag}" if tag else ""
+    prefix = out_dir / f"mge_{filter_name}{suffix}"
 
     _plot_components(surf, sigma, q_obs, str(prefix) + "_components.png")
 
@@ -416,7 +427,12 @@ if __name__ == "__main__":
                         help="Sky background in counts/s/pix (default: auto)")
     parser.add_argument("--filter", type=str, default="F814W", metavar="FILTER",
                         help="HST filter (F814W, F555W, F702W; default: F814W)")
+    parser.add_argument("--outer-slope", type=float, default=4,
+                        help="Outer logarithmic slope constraint (1-4; default 4)")
+    parser.add_argument("--tag", type=str, default="",
+                        help="Output filename suffix (e.g. --tag os2 → mge_F814W_os2.ecsv)")
     args = parser.parse_args()
 
     fit_mge_hst(args.galaxy, fwhm=args.fwhm, ngauss=args.ngauss,
-                trim_margin=args.trim, sky=args.sky, filt=args.filter)
+                trim_margin=args.trim, sky=args.sky, filt=args.filter,
+                outer_slope=args.outer_slope, tag=args.tag)
