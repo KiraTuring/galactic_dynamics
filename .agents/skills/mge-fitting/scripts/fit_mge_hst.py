@@ -358,8 +358,41 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     model = _compute_mge_model(
         total_counts, sigma_pix, q_obs, sec, sigmapsf,
         image_clean.shape[0], image_clean.shape[1])
-    _plot_contours(image_clean, model, sec, bg, pixscale,
-                   str(prefix) + "_contours.png")
+    #_plot_contours(image_clean, model, sec, bg, pixscale,
+    #               str(prefix) + "_contours.png")
+    # Use mge_print_contours (handles central pixel integration correctly)
+    from mgefit.mge_print_contours import mge_print_contours
+
+    # mge_print_contours uses img[xc, yc] convention (xc=row, yc=col)
+    r0, c0 = int(round(sec.xmed)), int(round(sec.ymed))
+    if image_clean[r0, c0] <= 0:
+        roi = image_clean[max(0,r0-3):r0+4, max(0,c0-3):c0+4]
+        dr, dc = np.unravel_index(roi.argmax(), roi.shape)
+        r0, c0 = max(0,r0-3) + dr, max(0,c0-3) + dc
+        print(f"  Center pixel masked, using nearby peak at row={r0} col={c0} = {image_clean[r0, c0]:.2f}")
+
+    def _mge_contour(ax, zoom):
+        mge_print_contours(image_clean, sec.theta, r0, c0, mge.sol,
+                           minlevel=max(bg, 1e-3), sigmapsf=sigmapsf,
+                           normpsf=[1.0], scale=pixscale, magstep=0.5)
+        if zoom:
+            ax.set_xlim(-zoom, zoom)
+            ax.set_ylim(-zoom, zoom)
+            ax.set_title(f'Zoom {zoom}″ × {zoom}″')
+        else:
+            ax.set_title(f'Full FOV ({image_clean.shape[1]*pixscale:.0f}″ × {image_clean.shape[0]*pixscale:.0f}″)')
+
+    fig = plt.figure(figsize=(16, 7))
+    ax1 = fig.add_subplot(121)
+    plt.sca(ax1)
+    _mge_contour(ax1, None)
+    ax2 = fig.add_subplot(122)
+    plt.sca(ax2)
+    _mge_contour(ax2, 3)
+    plt.tight_layout()
+    plt.savefig(str(prefix) + "_contours.png", dpi=150)
+    plt.close()
+    print(f"  Saved: {prefix}_contours.png")
 
     _plot_radial(pho, surf, sigma, q_obs, pixscale, photflam, centrwv, m_sun,
                  str(prefix) + "_radial.png")
