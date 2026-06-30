@@ -303,18 +303,50 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     plot_components(surf, sigma, q_obs,
                     str(out_dir / f"mge_{filter_name}_components.png"))
 
-    # 10b. Contour overlay (mge_print_contours: xc=row, yc=col)
-    # Use sky-subtracted image (not WHT-masked), so center pixel is non-zero
-    from mgefit.mge_print_contours import mge_print_contours
-    plt.figure(figsize=(8, 8))
-    minlevel_ct = max(bg * 2, 1e-3)
-    mge_print_contours(
-        image_sky, sec.theta, sec.xmed, sec.ymed, mge.sol,
-        minlevel=minlevel_ct,
-        sigmapsf=sigmapsf,
-        normpsf=[1.0],
-        scale=pixscale,
-    )
+    # 10b. Contour overlay (full FOV + zoom, manual extent)
+    ny_s, nx_s = image_sky.shape
+    y_pix = np.arange(ny_s) - sec.xmed
+    x_pix = np.arange(nx_s) - sec.ymed
+    ext_arcsec = [x_pix[0] * pixscale, x_pix[-1] * pixscale,
+                  y_pix[0] * pixscale, y_pix[-1] * pixscale]
+
+    # PSF-convolved MGE model image (rotation matches _gauss2d_mge)
+    model = np.zeros_like(image_sky)
+    ang_rad = np.radians(sec.theta - 90)
+    cos_a, sin_a = np.cos(ang_rad), np.sin(ang_rad)
+    yy, xx = np.meshgrid(y_pix, x_pix, indexing='ij')
+    # x' = row*cos + col*sin  (major axis),  y' = col*cos - row*sin  (minor axis)
+    x_maj = yy * cos_a + xx * sin_a
+    x_min = xx * cos_a - yy * sin_a
+    for w, s, q in zip(total_counts, sigma_pix, q_obs):
+        sx = np.sqrt(s ** 2 + sigmapsf ** 2)
+        sy = np.sqrt((s * q) ** 2 + sigmapsf ** 2)
+        g = np.exp(-0.5 * ((x_maj / sx) ** 2 + (x_min / sy) ** 2))
+        model += w / (2 * np.pi * sx * sy) * g
+
+    peak = image_sky[int(round(sec.xmed)), int(round(sec.ymed))]
+    nlevels = 12
+    lvls = np.logspace(np.log10(max(bg, 1e-3)),
+                       np.log10(peak * 0.9), nlevels)
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    for ax, zoom in zip(axes, [None, 3]):
+        ax.contour(image_sky, levels=lvls, colors='k', linewidths=1,
+                    extent=ext_arcsec)
+        ax.contour(model, levels=lvls, colors='r', linewidths=1,
+                    extent=ext_arcsec, linestyles='--')
+        ax.axhline(0, color='gray', lw=0.5, alpha=0.5)
+        ax.axvline(0, color='gray', lw=0.5, alpha=0.5)
+        ax.set_xlabel('arcsec')
+        ax.set_ylabel('arcsec')
+        ax.set_aspect('equal')
+        if zoom:
+            ax.set_xlim(-zoom, zoom)
+            ax.set_ylim(-zoom, zoom)
+            ax.set_title(f'Zoom {zoom}″ × {zoom}″')
+        else:
+            ax.set_title(f'Full FOV ({nx_s * pixscale:.0f}″ × {ny_s * pixscale:.0f}″)')
+    plt.tight_layout()
     plt.savefig(str(out_dir / f"mge_{filter_name}_contours.png"), dpi=150)
     plt.close()
     print(f"  Saved: {out_dir / f'mge_{filter_name}_contours.png'}")
