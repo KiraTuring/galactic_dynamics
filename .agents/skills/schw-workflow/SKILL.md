@@ -23,6 +23,9 @@ export PATH=/soft/slurm/bin:$PATH
 cd Axi_Schwarzschild
 python scripts/run.py ../config/<galaxy>.yaml
 
+# Check status
+python scripts/check_run.py ../galaxy_models/<model_dir>
+
 # Analyze completed results
 python scripts/analyze_results.py ../galaxy_models/<model_dir> -o results/<name>/
 
@@ -36,16 +39,28 @@ ls results/<name>/
 
 ### 0a. Create config
 
-Copy an existing config for the same galaxy and modify 4 fields:
+Copy an existing config for the same galaxy and modify:
 
 ```bash
 cp config/<base>.yaml config/<new>.yaml
-# Edit these fields:
-#   name:               unique run name
-#   template_directory: ../templates/<template>
-#   home_directory:     ../galaxy_models/<model_dir>
-#   seed:               different integer (to avoid duplicate sampling)
 ```
+
+| Field | How to set |
+|-------|-----------|
+| `name` | unique run name |
+| `template_directory` | `../templates/<template>` |
+| `home_directory` | `../galaxy_models/<model_dir>` (check if exists → ask not overwrite) |
+| `distMpc` | from description.yaml |
+| `BH` value, lo, hi | from JAM best-fit or previous run; `lo` must be below expected minimum |
+| `M/L` value, lo, hi | same, ensure range covers JAM best |
+| `inc.value`, `inc.fixed` | **check JAM results** for plausible inclination; do not blindly copy 75° |
+| `seed` | different integer per run (avoid duplicate sampling) |
+| `clear_existing_models` | `true` for new run, `false` for resume |
+
+> **⚠️ MUST confirm with user before submitting** — present the config parameters
+> (name, distMpc, BH/ML ranges, inc, output dir) and wait for explicit approval.
+> AxiSchw runs take hours to days — accidental overwrite or wrong parameters
+> waste significant time and compute resources.
 
 ### 0b. Submit to Slurm
 
@@ -62,20 +77,21 @@ each iteration.
 ### 0c. Monitor progress
 
 ```bash
+# Quick status
+python scripts/check_run.py ../galaxy_models/<model_dir>
+
 # Job status
 squeue -u wanght245001
 
-# Models completed (growing = running)
-ls galaxy_models/<home>/ | wc -l
-
-# Queue status (Q=queued, R=running, F=finished)
-grep -c " F " galaxy_models/<home>/queue.txt
+# Iteration progress
+ls galaxy_models/<home>/chi2plot-*.png
 ```
 
 ### MPI pool fails: fall back to independent workers
 
-If the MPI pool doesn't start (PD with `QOSMaxCpuPerUserLimit` or fails with
-`mpirun: command not found`), submit individual workers manually:
+If the MPI pool doesn't start (PD with `QOSMaxCpuPerUserLimit`), **ask the user**
+before submitting independent workers — they consume job slots and may exceed
+the QOS job limit. If approved:
 
 ```bash
 Q="../galaxy_models/<home>/queue.txt"
@@ -95,6 +111,8 @@ done
 | `Connection closed by UNKNOWN port` | EasyConnect VPN session expired | Re-login at http://localhost:8080 (VNC password: `opencode`) |
 | `No such file: config/...` | Config path relative to Axi_Schwarzschild | Use `../config/<name>.yaml` |
 | `MGE file ... not found` | Wrong `template_directory` | Check templates dir exists at that path |
+| `Directory not empty (rmtree)` | Cluster filesystem race; iterator crashed mid-cleanup | Just resubmit — directory is now clean |
+| Failed `run.py` with no queue.txt | `clear_existing_models: true` + stale datfil/ | Set `clear_existing_models: false` or rm the dir manually, then resubmit |
 
 ---
 
@@ -191,7 +209,8 @@ Output: `weights_<suffix>.ecsv` + `datfil_<suffix>/` per model. Original untouch
 
 | Task | Command / Code |
 |------|---------------|
-| Create config | `cp config/base.yaml config/new.yaml` + edit 4 fields |
+| Check status | `python scripts/check_run.py <model_dir>` |
+| Create config | `cp config/base.yaml config/new.yaml` + edit fields (⚠️ confirm with user) |
 | Submit run | `run.py ../config/<name>.yaml` |
 | Check jobs | `squeue -u wanght245001` |
 | MPI verification | `srun -p test -n 2 --time=2 bash -c "source /etc/profile.d/module-profile.sh && module load openmpi/4.1.8 && which mpirun"` |
