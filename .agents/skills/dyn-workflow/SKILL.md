@@ -129,6 +129,7 @@ tail -f Trischwarzpy/log/<name>.err
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
+| Agent submits without asking | Missing confirmation step | **Agent rule**: Before any `sbatch`, present full parameter set (q/p/u, bh/ml range, strategy, ncpus, mem) to the user and wait for explicit approval. |
 | `sbatch` returns, but `squeue` shows **PD**, not R | Jobs start pending. SLURM takes seconds to minutes to allocate resources. | Check again after 10-30s. PD ≠ failed — it means waiting for a free node. |
 | `YAML ParserError` at `\mathrm` | LaTeX braces in flow-style `{...}` break YAML parser | Use block-style YAML (multi-line keys), never inline `{key: val}` format |
 | Job runs 3 seconds, exits | Config has `reset_existing_output=True` and output dir exists | Use `-r` flag to resume, or delete output dir |
