@@ -40,9 +40,12 @@ galactic_dynamics/
 ## Conventions
 - Galaxy names: uppercase NGC format (e.g. NGC4621)
 - Mock galaxies: append "-mock", "-mock2", etc.
+- Custom kinematics: append "-{tag}" to distinguish non-OASIS source (e.g. `-h6` for pPXF h6 fits)
+  - no suffix = original OASIS kinematics
+  - `-h6` = custom pPXF extraction (moments=6)
 - Model configs: `configs/{galaxy}/{model}.yaml`
 - Results: `results/JAM/{galaxy}/{model}/`
-- Processed data: `data/processed/{galaxy}/`
+- Processed data: `data/processed/{galaxy}/` or `data/processed/{galaxy}-{tag}/`
 
 ## Data Rules
 - Never read FITS files into context — log paths only
