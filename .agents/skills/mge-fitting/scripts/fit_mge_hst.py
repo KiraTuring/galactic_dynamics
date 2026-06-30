@@ -304,11 +304,13 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
                     str(out_dir / f"mge_{filter_name}_components.png"))
 
     # 10b. Contour overlay (mge_print_contours: xc=row, yc=col)
+    # Use sky-subtracted image (not WHT-masked), so center pixel is non-zero
     from mgefit.mge_print_contours import mge_print_contours
     plt.figure(figsize=(8, 8))
+    minlevel_ct = max(bg * 2, 1e-3)
     mge_print_contours(
-        image_clean, sec.theta, sec.xmed, sec.ymed, mge.sol,
-        minlevel=bg * 2,
+        image_sky, sec.theta, sec.xmed, sec.ymed, mge.sol,
+        minlevel=minlevel_ct,
         sigmapsf=sigmapsf,
         normpsf=[1.0],
         scale=pixscale,
