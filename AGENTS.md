@@ -14,7 +14,9 @@ galactic_dynamics/
 │   ├── mod_dyn/            # BayesOpt, 配置, 后处理
 │   └── trischwpy/          # Dynamite 包装层 + 三轴数学工具
 ├── JAM/                    # Jeans Anisotropic MGE 建模
-├── data/                   # 本地观测数据
+├── data/
+│   ├── raw/                # 原始观测数据（git-ignored）
+│   └── processed/          # 预处理输出（git-tracked）
 ├── easyconnect/            # VPN + SSH 工具
 ├── results/                # 本地分析结果
 └── .agents/skills/         # OpenCode skills
@@ -44,7 +46,7 @@ galactic_dynamics/
 
 ## Data Rules
 - Never read FITS files into context — log paths only
-- `data/raw/` and `results/` are git-ignored
+- `data/raw/` and `results/` are git-ignored; `data/processed/` IS tracked
 - **Never overwrite existing results without explicit user approval.**
   Before writing to `results/` or `data/processed/`, check if data already exists.
   If so, ask the user whether to overwrite, skip, or use a new directory name.
@@ -146,6 +148,9 @@ python3 easyconnect/ssh_helper.py --download cluster_file local_path
 | `opencode.jsonc` | 项目配置（含 cluster 元信息） |
 
 ## Skills
+- `galaxy-data-prep` — 数据预处理（OASIS/SAURON kinematics, MGE, PSF, custom pPXF）
+- `galaxy-jam` — JAM config 创建、运行、结果管理
+- `galaxy-troubleshooting` — 管线常见问题排查
 - `mge-fitting` — 从 HST 图像拟合 MGE 光度模型（Cappellari 2002, mgefit）
 - `schw-workflow` — AxiSchw 完整工作流（配置 → 提交 → 监控 → 分析）
 - `dyn-workflow` — Dynamite 三轴完整工作流（配置 → 提交 → 恢复 → 后处理）
