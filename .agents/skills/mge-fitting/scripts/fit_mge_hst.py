@@ -269,7 +269,7 @@ def _plot_comparison(surf, sigma, q_obs, filter_name, out_dir):
 
 # ---- pipeline ----
 
-def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None, filt="F814W"):
+def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.0, sky=None, filt="F814W"):
     out_dir = DATA_PROC / galaxy
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -410,8 +410,8 @@ if __name__ == "__main__":
                         help="PSF FWHM in arcsec (default: 0.13 for WFPC2 F814W)")
     parser.add_argument("--ngauss", type=int, default=20,
                         help="Number of Gaussian components (default 20)")
-    parser.add_argument("--trim", type=float, default=0.05,
-                        help="Edge trim fraction (default 0.05)")
+    parser.add_argument("--trim", type=float, default=0.0,
+                        help="Edge trim fraction (default 0.0; WHT mask handles bad pixels)")
     parser.add_argument("--sky", type=float, default=None,
                         help="Sky background in counts/s/pix (default: auto)")
     parser.add_argument("--filter", type=str, default="F814W", metavar="FILTER",
