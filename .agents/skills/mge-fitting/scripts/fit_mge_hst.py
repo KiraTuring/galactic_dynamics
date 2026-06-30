@@ -14,13 +14,14 @@ Usage:
     python fit_mge_hst.py <galaxy>
     python fit_mge_hst.py NGC4621
     python fit_mge_hst.py NGC4621 --fwhm 0.13 --ngauss 15
+    python fit_mge_hst.py NGC5845                # uses F555W if F814W unavailable
 
 Output (data/processed/{galaxy}/):
-    mge_f814w.ecsv            — MGE parameters
-    mge_f814w_components.png  — Gaussian ellipses + radial profile
-    mge_f814w_contours.png    — Contour overlay on image
-    mge_f814w_radial.png      — Radial profile vs fit
-    mge_f814w_comparison.png  — Comparison with existing MGE (if found)
+    mge_{filter_name}.ecsv            — MGE parameters
+    mge_{filter_name}_components.png  — Gaussian ellipses + radial profile
+    mge_{filter_name}_contours.png    — Contour overlay on image
+    mge_{filter_name}_radial.png      — Radial profile vs fit
+    mge_{filter_name}_comparison.png  — Comparison with existing MGE (if found)
 
 Dependencies:
     mgefit (Cappellari 2002), astropy, numpy, matplotlib
@@ -47,7 +48,14 @@ from mgefit.mge_fit_sectors_regularized import mge_fit_sectors_regularized
 C_AA = 2.99792458e18          # speed of light in Å/s
 ARCSEC_PER_RAD = 206265.0     # arcsec/rad
 AB_ZP = -48.6                 # AB magnitude zeropoint
-M_SUN_F814W = 4.56            # Solar absolute AB magnitude in F814W (Willmer 2018)
+M_SUN_AB = {            # Solar absolute AB magnitudes (Willmer 2018)
+    "F555W": 4.82,      # V-band
+    "F606W": 4.77,      # wide V
+    "F702W": 4.71,      # R-band
+    "F814W": 4.56,      # I-band
+    "F160W": 5.36,      # H-band (NICMOS)
+}
+M_SUN_DEFAULT = 4.56    # fallback
 
 # --- Paths ---
 _JAM_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
@@ -72,8 +80,9 @@ def read_hst_image(path):
 
         photflam = sci.header.get("PHOTFLAM")
         centrwv = hdu[0].header.get("CENTRWV", 8012.0)
+        filter_name = hdu[0].header.get("FILTNAM1", "").strip().upper()
 
-    return data, pixscale, photflam, centrwv
+    return data, pixscale, photflam, centrwv, filter_name
 
 
 def background_level(image, fraction=0.99):
@@ -105,7 +114,7 @@ def flux_to_abmag(f_nu):
     return -2.5 * np.log10(f_nu) - 48.6
 
 
-def abmag_to_solar(mu_ab, m_sun=M_SUN_F814W):
+def abmag_to_solar(mu_ab, m_sun):
     """AB mag/arcsec² → L⊙ pc⁻²."""
     return ARCSEC_PER_RAD ** 2 * 10 ** (-0.4 * (mu_ab - m_sun))
 
@@ -160,12 +169,17 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     out_dir = DATA_PROC / galaxy
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- 1. Locate F814W image ---
-    pattern = str(DATA_RAW / galaxy / "hst_*f814w*drz.fits")
-    hst_list = sorted(glob.glob(pattern))
+    # --- 1. Locate HST image ---
+    patterns = ["hst_*f814w*drz.fits", "hst_*f555w*drz.fits",
+                "hst_*f702w*drz.fits", "hst_*drz.fits"]
+    hst_list = []
+    for p in patterns:
+        hst_list = sorted(glob.glob(str(DATA_RAW / galaxy / p)))
+        if hst_list:
+            break
     if not hst_list:
         raise FileNotFoundError(
-            f"No HST F814W drz FITS found in {DATA_RAW / galaxy}/"
+            f"No HST drz FITS found for {galaxy} in {DATA_RAW / galaxy}/"
         )
     hst_path = hst_list[0]
     print(f"\n{'=' * 60}")
@@ -174,7 +188,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     print(f"Image: {hst_path}")
 
     # --- 2. Read image ---
-    image, pixscale, photflam, centrwv = read_hst_image(hst_path)
+    image, pixscale, photflam, centrwv, filter_name = read_hst_image(hst_path)
     ny, nx = image.shape
     print(f"Size: {nx}×{ny}, Scale: {pixscale:.4f} arcsec/pix")
     print(f"PHOTFLAM: {photflam:.4e}, CENTRWV: {centrwv:.1f} Å")
@@ -245,6 +259,10 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     # --- 7. Unit conversion ---
     sigma = sigma_pix * pixscale  # arcsec
 
+    # Solar magnitude for this filter
+    m_sun = M_SUN_AB.get(filter_name, M_SUN_DEFAULT)
+    print(f"Filter: {filter_name}, CENTRWV={centrwv:.0f} Å, M⊙_AB={m_sun:.2f}")
+
     # AB zeropoint of this image: m_AB = -2.5 log10(counts) + ZP
     # f_nu = counts * photflam * centrwv² / c  (erg/cm²/s/Hz)
     # m_AB = -2.5 log10(f_nu) - 48.6
@@ -256,7 +274,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     # → AB mag/arcsec²
     mu_ab = flux_to_abmag(sb_counts * photflam * centrwv ** 2 / C_AA)
     # → L⊙ pc⁻²
-    surf = abmag_to_solar(mu_ab, M_SUN_F814W)
+    surf = abmag_to_solar(mu_ab, m_sun)
 
     # --- 8. Print results ---
     print(f"\n{'I (L⊙/pc²)':>15s}  {'sigma (arcsec)':>15s}  {'q':>8s}")
@@ -271,7 +289,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
         "q": q_obs,
         "pa_twist": np.zeros(ng),
     })
-    ecsv_path = out_dir / "mge_f814w.ecsv"
+    ecsv_path = out_dir / f"mge_{filter_name}.ecsv"
     ascii.write(table, ecsv_path, format="ecsv", overwrite=True)
     print(f"\nSaved: {ecsv_path}")
 
@@ -279,7 +297,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
 
     # 10a. Gaussian components
     plot_components(surf, sigma, q_obs,
-                    str(out_dir / "mge_f814w_components.png"))
+                    str(out_dir / f"mge_{filter_name}_components.png"))
 
     # 10b. Contour overlay (mge_print_contours: xc=row, yc=col)
     from mgefit.mge_print_contours import mge_print_contours
@@ -291,25 +309,37 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
         normpsf=[1.0],
         scale=pixscale,
     )
-    plt.savefig(str(out_dir / "mge_f814w_contours.png"), dpi=150)
+    plt.savefig(str(out_dir / f"mge_{filter_name}_contours.png"), dpi=150)
     plt.close()
-    print(f"  Saved: {out_dir / 'mge_f814w_contours.png'}")
+    print(f"  Saved: {out_dir / f'mge_{filter_name}_contours.png'}")
 
-    # 10c. Radial profile
+    # 10c. Radial profile (major + minor axis)
     pho_radius = pho.radius * pixscale
     pho_sb = pho.counts / pixscale ** 2
     pho_mu = flux_to_abmag(pho_sb * photflam * centrwv ** 2 / C_AA)
-    pho_surf = abmag_to_solar(pho_mu, M_SUN_F814W)
+    pho_surf = abmag_to_solar(pho_mu, m_sun)
 
+    # Split by angle: major axis (|angle| < 15°) vs minor axis (|angle - 90| < 15°)
+    angle = np.asarray(pho.angle)
+    major_sel = (np.abs(angle) < 15) | (np.abs(angle - 180) < 15)
+    minor_sel = np.abs(angle - 90) < 15
+
+    # MGE model along major axis (q=1) and minor axis (q=q_obs)
     radi = np.logspace(np.log10(pho_radius.min() * 0.5),
                        np.log10(pho_radius.max() * 2), 300)
-    mge_sb = np.zeros_like(radi)
+    mge_major = np.zeros_like(radi)
+    mge_minor = np.zeros_like(radi)
     for f, s, q in zip(surf, sigma, q_obs):
-        mge_sb += f * np.exp(-radi ** 2 / (2 * s ** 2))
+        mge_major += f * np.exp(-radi ** 2 / (2 * s ** 2))
+        mge_minor += f * np.exp(-radi ** 2 / (2 * (s * q) ** 2))
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(radi, mge_sb, "k-", label="MGE fit", lw=2)
-    ax.scatter(pho_radius, pho_surf, s=5, c="C0", alpha=0.4, label="Data")
+    ax.plot(radi, mge_major, "k-", label="MGE major axis", lw=2)
+    ax.plot(radi, mge_minor, "k--", label="MGE minor axis", lw=2)
+    ax.scatter(pho_radius[major_sel], pho_surf[major_sel],
+               s=8, c="C0", alpha=0.4, label="Data (major)", marker="o")
+    ax.scatter(pho_radius[minor_sel], pho_surf[minor_sel],
+               s=8, c="C1", alpha=0.4, label="Data (minor)", marker="s")
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim(pho_radius.min() * 0.5, pho_radius.max() * 1.5)
@@ -320,9 +350,9 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     ax.set_ylabel(r"$I\ (L_\odot\ \mathrm{pc}^{-2})$")
     ax.legend()
     plt.tight_layout()
-    plt.savefig(str(out_dir / "mge_f814w_radial.png"), dpi=150)
+    plt.savefig(str(out_dir / f"mge_{filter_name}_radial.png"), dpi=150)
     plt.close()
-    print(f"  Saved: {out_dir / 'mge_f814w_radial.png'}")
+    print(f"  Saved: {out_dir / f'mge_{filter_name}_radial.png'}")
 
     # 10d. Compare with existing MGE (different data sources — not directly comparable)
     existing = out_dir / "mge.ecsv"
@@ -331,7 +361,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.errorbar(sigma * (q_obs + 1) / 2, surf,
                     xerr=sigma * (1 - q_obs) / 2,
-                    fmt="o", capsize=4, label=f"F814W (HST PC)")
+                    fmt="o", capsize=4, label=f"{filter_name.upper()} (HST PC)")
         ax.errorbar(old["sigma"] * (old["q"] + 1) / 2, old["I"],
                     xerr=old["sigma"] * (1 - old["q"]) / 2,
                     fmt="s", capsize=4, label=f"Existing (SAURON/SDSS r)")
@@ -347,9 +377,9 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
         ax.set_title("MGE comparison (different instruments — offset expected)")
         ax.legend()
         plt.tight_layout()
-        plt.savefig(str(out_dir / "mge_f814w_comparison.png"), dpi=150)
+        plt.savefig(str(out_dir / f"mge_{filter_name}_comparison.png"), dpi=150)
         plt.close()
-        print(f"  Saved: {out_dir / 'mge_f814w_comparison.png'}")
+        print(f"  Saved: {out_dir / f'mge_{filter_name}_comparison.png'}")
 
     print(f"\nDone. Results in {out_dir}/")
     return surf, sigma, q_obs
