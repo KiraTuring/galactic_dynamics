@@ -45,7 +45,7 @@ from jam_fit.prep import read_hst_image as read_hst_wht
 
 # --- Physical constants ---
 C_AA = 2.99792458e18
-ARCSEC_PER_RAD = 206265.0
+ARCSEC_PER_10PC = 20626.5  # arcsec per pc at 10 pc = 206265/10
 AB_ZP = -48.6
 M_SUN_AB = {
     "F555W": 4.82, "F606W": 4.77, "F702W": 4.71,
@@ -65,7 +65,7 @@ def flux_to_abmag(f_nu):
 
 
 def abmag_to_solar(mu_ab, m_sun):
-    return ARCSEC_PER_RAD ** 2 * 10 ** (-0.4 * (mu_ab - m_sun))
+    return ARCSEC_PER_10PC ** 2 * 10 ** (-0.4 * (mu_ab - m_sun))
 
 
 def background_level(image, fraction=0.99):
