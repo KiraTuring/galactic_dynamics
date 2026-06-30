@@ -6,7 +6,7 @@ Pipeline:
     1. Read HST F814W drizzled image (SCI extension)
     2. find_galaxy() — locate center, ellipticity, PA
     3. sectors_photometry() — radial surface brightness in sectors
-    4. mge_fit_sectors() — fit Gaussians (non-regularized, respects ngauss)
+    4. mge_fit_sectors_regularized() — fit Gaussians with regularization (Cappellari 2002)
     5. Convert units: counts → AB mag/arcsec² → L⊙ pc⁻²
     6. Save results + diagnostic plots
 
@@ -39,7 +39,7 @@ from matplotlib.patches import Ellipse
 
 from mgefit.find_galaxy import find_galaxy
 from mgefit.sectors_photometry import sectors_photometry
-from mgefit.mge_fit_sectors import mge_fit_sectors
+from mgefit.mge_fit_sectors_regularized import mge_fit_sectors_regularized
 
 
 
@@ -84,6 +84,22 @@ def background_level(image, fraction=0.99):
     return flat[cum <= fraction][-1]
 
 
+def estimate_sky(image, margin=0.1):
+    """Estimate sky level from image corners (mode of edge pixels)."""
+    ny, nx = image.shape
+    my, mx = int(ny * margin), int(nx * margin)
+    corners = np.concatenate([
+        image[:my, :mx].ravel(),
+        image[:my, -mx:].ravel(),
+        image[-my:, :mx].ravel(),
+        image[-my:, -mx:].ravel(),
+    ])
+    # Remove outliers
+    lo, hi = np.percentile(corners, [5, 95])
+    sky = corners[(corners >= lo) & (corners <= hi)].mean()
+    return sky
+
+
 def flux_to_abmag(f_nu):
     """Flux density (erg/cm²/s/Hz) → AB mag."""
     return -2.5 * np.log10(f_nu) - 48.6
@@ -123,7 +139,7 @@ def plot_components(surf, sigma, q_obs, savepath):
     print(f"  Saved: {savepath}")
 
 
-def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
+def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     """
     Run full MGE fitting pipeline on an HST F814W image.
 
@@ -134,9 +150,12 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
     fwhm : float or None
         PSF FWHM in arcsec. Default (None): 0.13 arcsec for WFPC2 F814W.
     ngauss : int
-        Number of Gaussian components (default 15).
+        Number of Gaussian components (default 20).
     trim_margin : float
         Fractional margin to trim from image edges (default 0.05).
+    sky : float or None
+        Sky background in counts/s/pix. If None, estimate automatically.
+        Sky-subtracted image is used for sector photometry.
     """
     out_dir = DATA_PROC / galaxy
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -166,22 +185,34 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
     image_trim = image[my:ny - my, mx:nx - mx]
     print(f"Trimmed: {image_trim.shape}")
 
-    # Background level
-    bg = background_level(image_trim)
+    # --- 3. Sky background ---
+    if sky is None:
+        sky_est = estimate_sky(image_trim)
+        sky_est = max(sky_est, 0.0)
+        print(f"Sky background (estimated from corners): {sky_est:.4f} counts/s/pix")
+    else:
+        sky_est = sky
+        print(f"Sky background (user): {sky_est:.4f} counts/s/pix")
+
+    sky_est = float(sky_est)
+    image_sky = image_trim - sky_est
+
+    # Background level (for sector photometry cutoff)
+    bg = background_level(image_sky)
     print(f"Background cutoff (top 99% flux): {bg:.3f}")
 
-    # --- 3. Find galaxy ---
-    sec = find_galaxy(image_trim, plot=False, fraction=0.1)
+    # --- 4. Find galaxy ---
+    sec = find_galaxy(image_sky, plot=False, fraction=0.1)
     print(f"Center: ({sec.xmed:.1f}, {sec.ymed:.1f}) pix")
     print(f"Ellipticity: {sec.eps:.4f}, PA: {sec.pa:.2f}°")
 
     # Pixel-to-arcsec offset for plotting
-    x_arcsec = (np.arange(image_trim.shape[1]) - sec.ymed) * pixscale
-    y_arcsec = (np.arange(image_trim.shape[0]) - sec.xmed) * pixscale
+    x_arcsec = (np.arange(image_sky.shape[1]) - sec.ymed) * pixscale
+    y_arcsec = (np.arange(image_sky.shape[0]) - sec.xmed) * pixscale
 
-    # --- 4. Sector photometry ---
+    # --- 5. Sector photometry ---
     pho = sectors_photometry(
-        image_trim, sec.eps, sec.theta, sec.xmed, sec.ymed,
+        image_sky, sec.eps, sec.theta, sec.xmed, sec.ymed,
         plot=False,
     )
     print(f"Sectors: {len(pho.radius)} points")
@@ -195,8 +226,8 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
     sigmapsf = fwhm / (2.355 * pixscale)
     print(f"PSF sigma: {sigmapsf:.2f} pix")
 
-    # --- 6. MGE fit ---
-    mge = mge_fit_sectors(
+    # --- 6. MGE fit (regularized, follows Cappellari 2002 / 2006) ---
+    mge = mge_fit_sectors_regularized(
         pho.radius, pho.angle, pho.counts, sec.eps,
         ngauss=ngauss,
         plot=False,
@@ -254,7 +285,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=15, trim_margin=0.05):
     from mgefit.mge_print_contours import mge_print_contours
     plt.figure(figsize=(8, 8))
     mge_print_contours(
-        image_trim, sec.theta, sec.xmed, sec.ymed, mge.sol,
+        image_sky, sec.theta, sec.xmed, sec.ymed, mge.sol,
         minlevel=bg * 2,
         sigmapsf=sigmapsf,
         normpsf=[1.0],
@@ -331,11 +362,13 @@ if __name__ == "__main__":
     parser.add_argument("galaxy", help="Galaxy name (e.g. NGC4621)")
     parser.add_argument("--fwhm", type=float, default=None,
                         help="PSF FWHM in arcsec (default: 0.13 for WFPC2 F814W)")
-    parser.add_argument("--ngauss", type=int, default=15,
+    parser.add_argument("--ngauss", type=int, default=20,
                         help="Number of Gaussian components (default 20)")
     parser.add_argument("--trim", type=float, default=0.05,
                         help="Edge trim fraction (default 0.05)")
+    parser.add_argument("--sky", type=float, default=None,
+                        help="Sky background in counts/s/pix (default: auto)")
     args = parser.parse_args()
 
     fit_mge_hst(args.galaxy, fwhm=args.fwhm, ngauss=args.ngauss,
-                trim_margin=args.trim)
+                trim_margin=args.trim, sky=args.sky)
