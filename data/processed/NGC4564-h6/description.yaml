@@ -1,3 +1,4 @@
+# NGC4564-h6 -- data description
 galaxy: NGC4564-h6
 type: E
 distMpc: 17.8
@@ -5,8 +6,13 @@ redshift: '0.003809'
 fwhm_arcsec: 0.7
 oasis_run: 3
 pixsize: 0.27
-kinematic_source: pPXF
-mge: TODO
+mge:
+  source: F702W HST MGE (custom fit)
+  components: 8
+  q_min: 0.4606
+  q_max: 0.9011
+  sigma_min_arcsec: 0.0786
+  sigma_max_arcsec: 6.85
 kinematics:
   bins: 370
   v_min_kms: -90.66
@@ -23,35 +29,9 @@ pPXF_settings:
   binning: ref_bins
   ref_kinematics: kinematics_oasis_NGC4564.fits.gz
   cube: MS_NGC4564_oas_r3_E3D.fits.gz
-data_quality: 'OASIS kinematics replaced with custom pPXF extraction (moments=6, bias=0.5,
-
-  MILES v9.1 templates). SAURON data unchanged from original processing.
-
-  '
-processing_log:
-- date: '2026-06-29'
-  step: pPXF kinematics replacement
-  notes: Replaced OASIS kinematics with pPXF h6 extraction (moments=6, bias=0.5, MILES
-    v9.1). PA=46.5, 370 bins.
-- date: '2026-06-29'
-  step: PSF fit (OASIS)
-  notes: sigma1=0.310, sigma2=1.303, weight1=0.789, chi2=0.059
-- date: '2026-06-29'
-  step: PSF fit (SAURON)
-  notes: sigma1=0.974, sigma2=4.520, weight1=0.923, chi2=0.120
-- date: '2026-06-29'
-  step: SAURON kinematics
-  notes: Generated _s files from SAURON r3, sigma x1.05 offset applied. PA check
-    OASIS=43.50 vs SAURON=41.00, diff=2.50 deg (OK).
-- date: '2026-06-29'
-  step: h5/h6 → prior
-  notes: Set h5=0, dh5=0.1, h6=0, dh6=0.1 in gauss_hermite_kins_o/s.ecsv and combined.
-    Real h5/h6 from pPXF replaced with uninformative prior for histogram conversion.
-- date: '2026-06-29'
-  step: LOSVD histogram
-  notes: Generated hist_kins_o.ecsv (370 bins), hist_kins_s.ecsv (689 bins) via convert_gh_to_hist
-    (nvbins=30, vmax=1500, nmc=1000).
-jam_models: []
+data_quality: OASIS kinematics replaced with custom pPXF extraction (moments=6, bias=0.5,
+  MILES v9.1 templates). MGE from custom F702W HST fit. SAURON data unchanged from
+  original processing.
 hst_images:
 - hst_06357_72_wfpc2_f702w_pc_drz.fits (proposal 6357, HST F702W)
 psf_fit:
@@ -63,3 +43,43 @@ psf_fit:
     sigma1: 0.9742837712172444
     sigma2: 4.520288137872436
     weight1: 0.9230141364684558
+processing_log:
+- date: '2026-06-29'
+  step: pPXF kinematics replacement
+  notes: Replaced OASIS kinematics with pPXF h6 extraction (moments=6, bias=0.5, MILES
+    v9.1). PA=46.5, 370 bins.
+- date: '2026-06-29'
+  step: PSF fit (OASIS)
+  notes: sigma1=0.310, sigma2=1.303, weight1=0.789, chi2=0.059 (HST F702W DRZ)
+- date: '2026-06-29'
+  step: PSF fit (SAURON)
+  notes: sigma1=0.974, sigma2=4.520, weight1=0.923, chi2=0.120 (HST F702W DRZ)
+- date: '2026-06-29'
+  step: SAURON kinematics
+  notes: Generated _s files from SAURON r3, sigma x1.05 offset applied. PA check OASIS=43.50
+    vs SAURON=41.00, diff=2.50 deg (OK).
+- date: '2026-06-29'
+  step: h5/h6 → prior
+  notes: Set h5=0, dh5=0.1, h6=0, dh6=0.1 in gauss_hermite_kins_o/s.ecsv and combined.
+- date: '2026-06-29'
+  step: LOSVD histogram
+  notes: Generated hist_kins_o.ecsv (370 bins), hist_kins_s.ecsv (689 bins) via convert_gh_to_hist
+    (nvbins=30, vmax=1500, nmc=1000).
+- date: '2026-07-01'
+  step: MGE import
+  notes: Imported MGE from F702W HST fit (mge_F702W_os2.ecsv). 8 components, q_min=0.461,
+    q_max=0.901.
+- date: '2026-06-30'
+  step: JAM model (default)
+  notes: align=cyl, logistic=false, 4 free params. chi2=263.1, q=0.273, ratio=0.969,
+    lg_mbh=8.55, lg_ml=0.498.
+jam_models:
+- name: default
+  chi2: 263.1
+  q: 0.273
+  lg_mbh: 8.55
+  lg_ml: 0.498
+  ratio: 0.969
+  psf_source: fitted (HST F702W DRZ)
+  kinematic_source: pPXF h6 → 0±0.1 prior
+  inc: 67.3
