@@ -42,6 +42,10 @@ from mgefit.find_galaxy import find_galaxy
 from mgefit.sectors_photometry import sectors_photometry
 from mgefit.mge_fit_sectors_regularized import mge_fit_sectors_regularized
 
+# Use JAM's prep.read_hst_image for WHT-masked image
+_JAM_PATH = Path(__file__).resolve().parent.parent.parent.parent / "JAM"
+sys.path.insert(0, str(_JAM_PATH))
+from jam_fit.prep import read_hst_image as read_hst_wht
 
 
 # --- Physical constants ---
@@ -63,26 +67,14 @@ DATA_RAW = _JAM_ROOT / "data" / "raw"
 DATA_PROC = _JAM_ROOT / "data" / "processed"
 
 
-def read_hst_image(path):
-    """Read SCI extension from HST drizzled FITS, return (data, metadata)."""
+def read_phot_cal(path):
+    """Read PHOTFLAM / CENTRWV / filter from HST FITS for unit conversion."""
     with fits.open(path) as hdu:
         sci = hdu["SCI"]
-        data = sci.data.astype(np.float64)
-
-        cd1_1 = sci.header.get("CD1_1")
-        cd2_2 = sci.header.get("CD2_2")
-        if cd1_1 is not None:
-            pixscale = abs(cd1_1) * 3600.0
-        elif cd2_2 is not None:
-            pixscale = abs(cd2_2) * 3600.0
-        else:
-            raise KeyError("Cannot determine pixel scale from CD matrix")
-
         photflam = sci.header.get("PHOTFLAM")
         centrwv = hdu[0].header.get("CENTRWV", 8012.0)
-        filter_name = hdu[0].header.get("FILTNAM1", "").strip().upper()
-
-    return data, pixscale, photflam, centrwv, filter_name
+        filt = hdu[0].header.get("FILTNAM1", "").strip().upper()
+    return photflam, centrwv, filt
 
 
 def background_level(image, fraction=0.99):
@@ -186,18 +178,28 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     print(f"MGE fit: {galaxy}")
     print(f"{'=' * 60}")
     print(f"Image: {hst_path}")
-
-    # --- 2. Read image ---
-    image, pixscale, photflam, centrwv, filter_name = read_hst_image(hst_path)
-    ny, nx = image.shape
+    # --- 2. Read image (with WHT mask from prep.py) ---
+    image_ma, wht, extent, pixscale = read_hst_wht(hst_path)
+    photflam, centrwv, filter_name = read_phot_cal(hst_path)
+    ny, nx = image_ma.shape
     print(f"Size: {nx}×{ny}, Scale: {pixscale:.4f} arcsec/pix")
-    print(f"PHOTFLAM: {photflam:.4e}, CENTRWV: {centrwv:.1f} Å")
+    print(f"PHOTFLAM: {photflam:.4e}, CENTRWV: {centrwv:.1f} Å, Filter: {filter_name}")
+
+    # Select solar magnitude by filter
+    m_sun = M_SUN_AB.get(filter_name, M_SUN_DEFAULT)
 
     # Trim
     mx = int(nx * trim_margin)
     my = int(ny * trim_margin)
-    image_trim = image[my:ny - my, mx:nx - mx]
+    image_trim = image_ma[my:ny - my, mx:nx - mx].data.astype(np.float64)
+    wht_trim = wht[my:ny - my, mx:nx - mx]
     print(f"Trimmed: {image_trim.shape}")
+
+    # Bad pixels mask from WHT
+    badpixels = wht_trim <= 0
+    nbad = badpixels.sum()
+    if nbad > 0:
+        print(f"Bad pixels masked (WHT <= 0): {nbad} ({100 * nbad / badpixels.size:.2f}%)")
 
     # --- 3. Sky background ---
     if sky is None:
@@ -215,18 +217,20 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     bg = background_level(image_sky)
     print(f"Background cutoff (top 99% flux): {bg:.3f}")
 
-    # --- 4. Find galaxy ---
-    sec = find_galaxy(image_sky, plot=False, fraction=0.1)
+    # --- 4. Find galaxy (use sky-subtracted data; replace bad pixels with 0) ---
+    image_clean = np.where(badpixels, 0.0, image_sky)
+    sec = find_galaxy(image_clean, plot=False, fraction=0.1)
     print(f"Center: ({sec.xmed:.1f}, {sec.ymed:.1f}) pix")
     print(f"Ellipticity: {sec.eps:.4f}, PA: {sec.pa:.2f}°")
 
     # Pixel-to-arcsec offset for plotting
-    x_arcsec = (np.arange(image_sky.shape[1]) - sec.ymed) * pixscale
-    y_arcsec = (np.arange(image_sky.shape[0]) - sec.xmed) * pixscale
+    x_arcsec = (np.arange(image_clean.shape[1]) - sec.ymed) * pixscale
+    y_arcsec = (np.arange(image_clean.shape[0]) - sec.xmed) * pixscale
 
-    # --- 5. Sector photometry ---
+    # --- 5. Sector photometry (with badpixels mask) ---
     pho = sectors_photometry(
-        image_sky, sec.eps, sec.theta, sec.xmed, sec.ymed,
+        image_clean, sec.eps, sec.theta, sec.xmed, sec.ymed,
+        badpixels=badpixels,
         plot=False,
     )
     print(f"Sectors: {len(pho.radius)} points")
@@ -303,7 +307,7 @@ def fit_mge_hst(galaxy, fwhm=None, ngauss=20, trim_margin=0.05, sky=None):
     from mgefit.mge_print_contours import mge_print_contours
     plt.figure(figsize=(8, 8))
     mge_print_contours(
-        image_sky, sec.theta, sec.xmed, sec.ymed, mge.sol,
+        image_clean, sec.theta, sec.xmed, sec.ymed, mge.sol,
         minlevel=bg * 2,
         sigmapsf=sigmapsf,
         normpsf=[1.0],
