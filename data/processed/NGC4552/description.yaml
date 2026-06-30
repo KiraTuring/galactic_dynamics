@@ -1,0 +1,64 @@
+galaxy: NGC4552
+type: E0-1
+distMpc: 15.9
+redshift: '0.00113'
+fwhm_arcsec: 0.67
+oasis_run: 1
+pixsize: 0.27
+mge:
+  source: sauron_mge.ecsv
+  components: 11
+  q_min: 0.8
+  q_max: 0.99
+  sigma_min_arcsec: 0.017298163592151014
+  sigma_max_arcsec: 136.77288255958496
+kinematics:
+  bins: 709
+  v_min_kms: -62.30179977416992
+  v_max_kms: 53.64030075073242
+  sigma_min_kms: 225.9434051513672
+  sigma_max_kms: 313.72021484375
+  pa: 122.5
+data_quality: 'PSF FWHM 0.67" (rank 4/29). PSF-free JAM reveals large systematic shifts:
+  q +0.18, lg_Mbh +0.3 dex, chi2 -7.1%. HST F555W image (5a variant, 42% negative
+  pixels) likely unreliable. SAURON PSF fit also unusually broad (sigma2=3.78 vs literature
+  2.24), confirming poor HST data. PSF fit and dynamics remain marginal. Use with
+  caution.'
+processing_log:
+- date: '2026-06-13'
+  step: stub generated
+  notes: 'mge: 11 comps, kin: 709 bins'
+- date: '2026-06-13'
+  step: PSF fit
+  notes: sigma1=0.291, sigma2=1.320, weight1=0.823, chi2=0.0213
+- date: '2026-06-13'
+  step: PSF free vs fixed comparison
+  notes: 'PSF-free JAM: chi2=2115, q=0.70, lg_mbh=9.09. Large shift vs fixed-PSF (chi2=2277,
+    q=0.52, lg_mbh=8.80). HST image quality suspect.'
+- date: '2026-06-14'
+  step: SAURON preprocessing
+  notes: 'SAURON kinematics (_s) generated from ATLAS3D. sigma x1.05 offset applied,
+    PSF [0.885,3.779]/[0.920,0.080] (HST-fitted, marginal due to bad image). PA check:
+    SAURON fitted=-31.5, OASIS=-32.5, diff=1.0 deg. OK'
+- date: '2026-06-14'
+  step: PSF fit (ATLAS3D)
+  notes: sigma1=0.885, sigma2=3.779, weight1=0.920, chi2=0.1085
+jam_models:
+- name: default
+  chi2: 2277.3
+  q: 0.515
+  ratio: 1.019
+  lg_mbh: 8.8
+  lg_ml: 0.61
+  psf_source: fitted (5a)
+  inc: 44.4
+- name: psf_free
+  chi2: 2114.7
+  q: 0.695
+  ratio: 1.097
+  lg_mbh: 9.09
+  lg_ml: 0.594
+  psf_source: free (fitted start)
+  inc: 56.6
+hst_images:
+- hst_05454_5a_wfpc2_f555w_pc_drz.fits

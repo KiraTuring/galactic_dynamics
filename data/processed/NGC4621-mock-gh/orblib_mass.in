@@ -1,0 +1,23 @@
+#counterrotation_setupfile_version_1
+Y                           [Calculate Massweights]
+infil/parameters.in
+200000                       [total points used to generate distribution]
+0.01                        [maximum error of massweight (before binning)]
+2                   	[psf's]
+2                   	[2 gaussian for psf 1]
+2                   	[2 gaussian for psf 2]
+0.76 0.36           	[weight, sigma for #1 gaussian in psf 1]
+0.24 0.92           	[weight, sigma for #2 gaussian in psf 1]
+0.74 0.68           	[weight, sigma for #1 gaussian in psf 2]
+0.26 1.656           	[weight, sigma for #2 gaussian in psf 2]
+2                   	[apertures]
+"infil/aperture_o.dat"
+1                   	[use psf 1]
+"infil/aperture_s.dat"
+2                   	[use psf 2]
+1                   	[use binning for aperture 1]
+1                   	[use binning for aperture 2]
+"infil/bins_o.dat"              	[binning file for aperture 1]
+"infil/bins_s.dat"              	[binning file for aperture 2]
+1                           [use clipping? 1/0]
+"datfil/mass_aper.dat"              	[output file]

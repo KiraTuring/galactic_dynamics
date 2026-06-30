@@ -1,0 +1,31 @@
+#counterrotation_setupfile_version_1
+N                   	[Calculate Massweights]
+infil/paraDM.in
+6                       [ndither]
+datfil/begin.dat
+200                 	[orbital periods to intergrate orbits]
+200000               	[# points to sample for each orbit in the merid. plane]
+1                   	[starting orbit]
+-1                  	[# orbits  to intergrate; -1 --> all orbits]
+1.0e-06              	[accuracy]
+180                 	[# of equally spaced projections between 0-180 degrees]
+2                   	[psf's]
+2                   	[2 gaussian for psf 1]
+2                   	[2 gaussian for psf 2]
+0.76 0.36           	[weight, sigma for #1 gaussian in psf 1]
+0.24 0.92           	[weight, sigma for #2 gaussian in psf 1]
+0.74 0.68           	[weight, sigma for #1 gaussian in psf 2]
+0.26 1.656           	[weight, sigma for #2 gaussian in psf 2]
+2                   	[apertures]
+"infil/aperture_o.dat"
+1                   	[use psf 1]
+"infil/aperture_s.dat"
+2                   	[use psf 2]
+2080.0 201        	[histogram total width, center, total bins for aperture 1]
+2080.0 201        	[histogram total width, center, total bins for aperture 2]
+1                   	[use binning for aperture 1]
+1                   	[use binning for aperture 2]
+"infil/bins_o.dat"              	[binning file for aperture 1]
+"infil/bins_s.dat"              	[binning file for aperture 2]
+1                   	[use clipping? 1/0 ]
+"datfil/orblib.dat"              	[output file]

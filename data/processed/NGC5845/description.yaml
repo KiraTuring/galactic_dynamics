@@ -1,0 +1,15 @@
+galaxy: NGC5845
+jam_models: []
+processing_log:
+- date: '2026-06-29'
+  notes: sigma1=1.000, sigma2=3.454, weight1=0.379, chi2=9.2240
+  step: PSF fit (OASIS)
+- date: '2026-06-29'
+  notes: sigma1=0.100, sigma2=6.000, weight1=0.087, chi2=219.4718
+  step: PSF fit (ATLAS3D)
+- date: '2026-06-29'
+  notes: sigma1=0.428, sigma2=1.470, weight1=0.770, chi2=0.0497
+  step: PSF fit (OASIS)
+- date: '2026-06-29'
+  notes: sigma1=0.747, sigma2=4.616, weight1=0.973, chi2=0.2149
+  step: PSF fit (ATLAS3D)

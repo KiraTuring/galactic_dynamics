@@ -1,0 +1,82 @@
+# NGC5813-h6 -- data description
+galaxy: NGC5813-h6
+type: E1-2
+distMpc: 32.2
+redshift: '0.006576'
+fwhm_arcsec: 0.87
+oasis_run: 1
+pixsize: 0.27
+kinematic_source: pPXF
+mge:
+  source: sauron_mge.ecsv
+  components: 11
+  q_min: 0.72
+  q_max: 0.98
+  sigma_min_arcsec: 0.3491
+  sigma_max_arcsec: 115.61
+kinematics:
+  bins: 459
+  v_min_kms: -109.94
+  v_max_kms: 150.53
+  sigma_min_kms: 145.3
+  sigma_max_kms: 349.71
+  pa: 147.0
+pPXF_settings:
+  template_library: MILES v9.1
+  moments: 6
+  bias: 0.5
+  degree: 4
+  fwhm_gal: 5.4
+  binning: ref_bins
+  ref_kinematics: kinematics_oasis_NGC5813.fits
+  cube: MS_NGC5813_oas_r1_E3D.fits.gz
+data_quality: 'OASIS kinematics replaced with custom pPXF extraction (moments=6, bias=0.5,
+
+  MILES v9.1 templates). h6 significantly improves h3/h4 correlations
+
+  with reference (0.97/0.88 vs 0.80/0.56 for h4-only fit).
+
+  Sigma systematically higher by ~14 km/s vs reference; expected behavior
+
+  as higher-order GH moments absorb LOSVD structure.
+
+  PA fitted at 147.0 deg (1 deg from reference 146.0, within error).
+
+  SAURON data unchanged from original NGC5813 processing.
+
+  '
+processing_log:
+- date: '2026-06-17'
+  step: pPXF kinematics replacement
+  notes: Replaced OASIS kinematics with pPXF h6 extraction (moments=6, bias=0.5, MILES
+    v9.1). PA=147.0, 459 bins.
+- date: '2026-06-17'
+  step: h5/h6 → prior
+  notes: Set h5=0, dh5=0.1, h6=0, dh6=0.1 in gauss_hermite_kins_o/s.ecsv and combined.
+    Real h5/h6 from pPXF replaced with uninformative prior for histogram conversion.
+- date: '2026-06-17'
+  step: LOSVD histogram
+  notes: Generated hist_kins_o.ecsv (459 bins), hist_kins_s.ecsv (1145 bins) via convert_gh_to_hist
+    (nvbins=30, vmax=1500, nmc=1000). SAURON bins with is_good=0 excluded.
+jam_models:
+- name: default
+  chi2: 926.6
+  q: 0.418
+  ratio: 1.003
+  lg_mbh: 9.5
+  lg_ml: 0.534
+  psf_source: fitted
+  kinematic_source: pPXF h6 → 0±0.1 prior
+- name: sph2
+  chi2: 917.4
+  q: 0.589
+- name: sph2-h4corr
+  chi2: 662.9
+  q: 0.467
+  ratio: 1.037
+  lg_mbh: 9.592
+  lg_ml: 0.572
+  ratio_inf: 1.0
+  psf_source: fitted
+  h4_corr: true
+  note: chi2 not comparable with models where h4_corr=false (error model differs)

@@ -1,0 +1,64 @@
+galaxy: NGC5813
+type: E1-2
+distMpc: 32.2
+redshift: '0.00654'
+fwhm_arcsec: 0.87
+oasis_run: 1
+pixsize: 0.27
+mge:
+  source: sauron_mge.ecsv
+  components: 11
+  q_min: 0.72
+  q_max: 0.98
+  sigma_min_arcsec: 0.3491403154785861
+  sigma_max_arcsec: 115.61122421920993
+kinematics:
+  bins: 459
+  v_min_kms: -110.96109771728516
+  v_max_kms: 122.12059783935547
+  sigma_min_kms: 167.36520385742188
+  sigma_max_kms: 314.1553039550781
+  pa: 146.0
+data_quality: 'PSF FWHM 0.87" (rank 12/29). PSF-free JAM: dynamics stable (lg_Mbh
+  9.47 to 9.50) but sigma2 diverges +58% from HST-fitted (1.50 to 2.38). Suggests
+  mild PSF model tension without affecting dynamical parameters. SAURON PA differs
+  from OASIS by 7.5 deg (mild kinematic twist).'
+processing_log:
+- date: '2026-06-13'
+  step: stub generated
+  notes: 'mge: 11 comps, kin: 459 bins'
+- date: '2026-06-13'
+  step: PSF fit
+  notes: sigma1=0.333, sigma2=1.503, weight1=0.811, chi2=0.0338
+- date: '2026-06-13'
+  step: PSF free vs fixed comparison
+  notes: 'PSF-free JAM: chi2=978, q=0.52, lg_mbh=9.50. Dynamics stable vs fixed (lg_mbh=9.47).
+    sigma2=2.38 (+58% vs HST 1.50, mild tension).'
+- date: '2026-06-14'
+  step: SAURON preprocessing
+  notes: 'SAURON kinematics (_s) generated from ATLAS3D. sigma x1.05 offset applied,
+    PSF [0.798,2.536]/[0.865,0.135] (HST-fitted). PA check: SAURON fitted=-63.5, OASIS=-56.0,
+    diff=7.5 deg. WARNING: mild discrepancy'
+- date: '2026-06-14'
+  step: PSF fit (ATLAS3D)
+  notes: sigma1=0.798, sigma2=2.536, weight1=0.865, chi2=0.0460
+jam_models:
+- name: default
+  chi2: 993.5
+  q: 0.424
+  ratio: 1.025
+  lg_mbh: 9.47
+  lg_ml: 0.491
+  psf_source: fitted
+  inc: 50.0
+- name: psf_free
+  chi2: 977.6
+  q: 0.525
+  ratio: 1.018
+  lg_mbh: 9.5
+  lg_ml: 0.48
+  psf_source: free (fitted start)
+  inc: 54.6
+hst_images:
+- hst_05454_0d_wfpc2_f555w_pc_drz.fits
+- hst_05454_0d_wfpc2_f814w_pc_drz.fits

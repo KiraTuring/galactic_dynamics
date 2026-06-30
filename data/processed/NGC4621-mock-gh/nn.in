@@ -1,0 +1,23 @@
+datfil/nn                                 [output root name]
+datfil/orblib.dat                         [orbit library input file]
+1.00                                    [Velocity scale factor]
+datfil/mass_mer.dat                       [merdional plane mass]
+datfil/mass_proj.dat                      [projected plane mass]
+datfil/mass_aper.dat                      [projected mass at kin. apertures]
+infil/kin_data.dat                        [kinematical data at apertures]
+1                                   [include Lz<0 orbits ? 0=no,1=yes,2=even]
+1                                  [fit meridional plane grid]
+0                                       [symmetry: fit(0), nofit(1), add(2)]
+0                     [merdional dispersion constraints ?]
+1                                  [fit projected plane grid]
+infil/tofit.dat                        [which constraints to fit ?]
+0.10                            [meridional plane frac error]
+0.10                             [projected plane frac error]
+datfil/vcirc.dat                           [reference velocities]
+2.00e-02                            [fractional v error mer. disp]
+0                                    [read previously computed matrix?]
+10.00                                 [regularization]
+2
+3
+1
+0                                    [NNLS: solve(0), read(1), test(2)]

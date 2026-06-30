@@ -1,0 +1,32 @@
+42
+#counterrotation_setupfile_version_1
+infil/parameters_pot.in
+datfil/beginbox.dat
+200								[number of orbital periods to integrate]
+50000								[points to sample for each orbit in the merid. plane]
+1								[starting orbit]
+-1								[orbits  to intergrate; -1 --> all orbits]
+1.0d-5								[accuracy]
+2								[number of psfs of the kinematic data + population data]
+2								[# of gaussians in kinematics psf 1]
+2								[# of gaussians in kinematics psf 2]
+0.76 0.36							[weight, sigma of comp 1 of kins psf 1]
+0.24 0.92							[weight, sigma of comp 2 of kins psf 1]
+0.86 0.76							[weight, sigma of comp 1 of kins psf 2]
+0.14 2.24							[weight, sigma of comp 2 of kins psf 2]
+2								[# of apertures of the kinematic data + population data]
+"infil/aperture_o.dat"
+1								[use kinematics psf 1 for oasis]
+1								[histogram dimension for apert 1 (oasis)]
+"infil/aperture_s.dat"
+2								[use kinematics psf 2 for atlas3d]
+1								[histogram dimension for apert 2 (atlas3d)]
+6560.0 0.0 821						[vhist width, center and nbins for kinematics oasis]
+1588.531982421875 0.0 125						[vhist width, center and nbins for kinematics atlas3d]
+1								[use binning for kinematics aperture 1? 0/1 = yes/no]
+1								[use binning for kinematics aperture 2? 0/1 = yes/no]
+"infil/bins_o.dat"						[binfile for kinematics aperture 1]
+"infil/bins_s.dat"						[binfile for kinematics aperture 2]
+"datfil/orblibbox_qgrid.dat"					[orbit qgrid file]
+"datfil/orblibbox_losvd_hist.dat"				[orbit losvd 1d hist file]
+"datfil/orblibbox.dat_orbclass.out"				[orbit classification file]

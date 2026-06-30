@@ -1,0 +1,74 @@
+io_settings:
+  clear_existing_models: true
+  delete_intermediate_files: false
+  home_directory: ../galaxy_models/4621-i75-hist4-64x5it
+  template_directory: ../templates/NGC4621-hist2
+multiprocessing_settings:
+  memory_per_process: 16
+  process_name: 01-pool
+  terminate_processes_after_run: true
+name: 4621_0h6_01
+orblib_settings:
+  kin_data_file:
+  - hist_kins_o.ecsv
+  - hist_kins_s.ecsv
+  logrmax: 2.5
+  logrmin: -1.0
+  nE: 21
+  nRadii: 7
+  nTheta: 8
+  ndither: 6
+  regul: 4
+parameter_space_settings:
+  sampler_settings:
+    n_processes: 64
+    seed: 42
+    strategy: gp
+  sampler_type: BayesOpt
+  stopping_criteria:
+    max_iterations: 5
+parameters:
+  bh:
+    LaTeX: $M_\mathrm{BH}$
+    fixed: false
+    grid_setting:
+      hi: 10000000000.0
+      lo: 10000000.0
+      logarithmic: true
+      minstep: 0.01
+      step: 0.301
+    value: 500000000.0
+  fdm:
+    LaTeX: $f_\mathrm{DM}$
+    fixed: true
+    grid_setting:
+      hi: 1.0
+      lo: 0.0
+      logarithmic: false
+      minstep: 0.1
+      step: 0.2
+    value: 0.0
+  inc:
+    LaTeX: $q_\mathrm{intr}$
+    fixed: true
+    grid_setting:
+      hi: 89.0
+      lo: 20.0
+      logarithmic: false
+      minstep: 5.0
+      step: 20.0
+    use_q_instead_of_inc: true
+    value: 75.0
+  ml:
+    LaTeX: $M/L$
+    fixed: false
+    grid_setting:
+      hi: 6.0
+      lo: 1.0
+      logarithmic: true
+      minstep: 0.01
+      step: 0.05
+    value: 3.0
+system_attributes:
+  distMpc: 17.78
+weight_solver_settings: {}

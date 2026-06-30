@@ -1,0 +1,62 @@
+galaxy: NGC5846
+type: E0-1
+distMpc: 24.9
+redshift: '0.00544'
+fwhm_arcsec: 0.58
+oasis_run: 3
+pixsize: 0.27
+mge:
+  source: sauron_mge.ecsv
+  components: 9
+  q_min: 0.85
+  q_max: 0.99
+  sigma_min_arcsec: 0.017298163592151014
+  sigma_max_arcsec: 157.39828644662197
+kinematics:
+  bins: 242
+  v_min_kms: -33.480201721191406
+  v_max_kms: 31.313400268554688
+  sigma_min_kms: 212.70469665527344
+  sigma_max_kms: 291.3008117675781
+  pa: 80.0
+data_quality: 'PSF FWHM 0.58 (rank 1/29). PSF well-constrained. WARNING: SAURON kinematic
+  PA differs from OASIS by 59 deg -- strong kinematic twist. Galaxy is NOT axisymmetric.
+  Axisymmetric JAM/AxiSchw models inappropriate; use triaxial models or exclude.'
+processing_log:
+- date: '2026-06-13'
+  step: stub generated
+  notes: 'mge: 9 comps, kin: 242 bins'
+- date: '2026-06-13'
+  step: PSF fit
+  notes: sigma1=0.240, sigma2=1.490, weight1=0.734, chi2=0.0267
+- date: '2026-06-13'
+  step: PSF free vs fixed comparison
+  notes: 'PSF-free JAM: chi2=476, sigma2=1.20 (HST=1.49). Dynamics robust: lg_mbh=9.28
+    (fixed=9.29), q=0.60 (fixed=0.69).'
+- date: '2026-06-14'
+  step: SAURON preprocessing
+  notes: 'SAURON kinematics (_s) generated from ATLAS3D. sigma x1.05 offset applied,
+    PSF [0.698,2.181]/[0.933,0.067] (HST-fitted). PA check: SAURON fitted=-49.0, OASIS=10.0,
+    diff=59.0 deg. WARNING: large discrepancy, investigate velocity field morphology'
+- date: '2026-06-14'
+  step: PSF fit (ATLAS3D)
+  notes: sigma1=0.698, sigma2=2.181, weight1=0.933, chi2=0.0119
+jam_models:
+- name: default
+  chi2: 509.6
+  q: 0.692
+  ratio: 1.082
+  lg_mbh: 9.29
+  lg_ml: 0.698
+  psf_source: fitted
+  inc: 46.9
+- name: psf_free
+  chi2: 476.4
+  q: 0.605
+  ratio: 1.058
+  lg_mbh: 9.28
+  lg_ml: 0.684
+  psf_source: free (fitted start)
+  inc: 41.4
+hst_images:
+- hst_05920_04_wfpc2_f555w_pc_drz.fits

@@ -1,0 +1,13 @@
+infil/parameters_lum.in
+2								[# of kinematics apertures]
+"infil/aperture_o.dat"
+2								[# of gaussians in kinematics psf 1]
+0.76 0.36							[weight, sigma of comp 1 of kin psf 1]
+0.24 0.92							[weight, sigma of comp 2 of kin psf 1]
+"infil/bins_o.dat"
+"infil/aperture_s.dat"
+2								[# of gaussians in kinematics psf 2]
+0.86 0.76							[weight, sigma of comp 1 of kin psf 2]
+0.14 2.24							[weight, sigma of comp 2 of kin psf 2]
+"infil/bins_s.dat"
+"datfil/mass_aper.dat"

@@ -1,0 +1,9 @@
+# NGC4564 -- data description
+galaxy: NGC4564
+processing_log:
+- date: '2026-06-29'
+  step: PSF fit (OASIS)
+  notes: sigma1=0.310, sigma2=1.303, weight1=0.789, chi2=0.0594
+- date: '2026-06-29'
+  step: PSF fit (ATLAS3D)
+  notes: sigma1=0.974, sigma2=4.520, weight1=0.923, chi2=0.1195

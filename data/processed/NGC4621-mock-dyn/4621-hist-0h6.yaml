@@ -1,0 +1,178 @@
+# Example yaml configuration file for the legacy implementation
+# All relevant input is in one file with two sections: SYSTEM and SETTINGS
+
+# Start of yaml document
+###################################################################################
+# SECTION 1 : SYSTEM
+# Define the physical system (e.g. the galaxy, globular cluster etc being modelled)
+###################################################################################
+
+system_attributes:
+    distMPc: 17.78
+    name: "4621_hist"
+    position_angle: 0
+
+system_components:
+
+    bh:
+        parameters:
+            m:
+                par_generator_settings:
+                    lo: 7.5
+                    hi: 9.0
+                    step: 0.301
+                    minstep: 0.01
+                fixed: False
+                value: 8.45
+                logarithmic: True
+                LaTeX: "$\\log(M_\\mathrm{BH}/M_\\odot)$"
+            a:
+                fixed: True
+                value: 0.001
+                LaTeX: "$a_\\mathrm{BH}$"
+        type: "Plummer"
+        include: True
+        contributes_to_potential: True
+
+    dh: # dark_halo
+        parameters:
+            # c: # NFW Darkmatter concentration
+            #     par_generator_settings:
+            #         lo: 2.0
+            #         hi: 4.0
+            #         step: 1.0
+            #         minstep: 0.1
+            #     logarithmic: True
+            #     fixed: False
+            #     value: 3.0
+            #     LaTeX: "$\\log(C)$"
+            f: # NFW Darkmatter fraction
+                par_generator_settings:
+                    lo: -1.0
+                    hi: 2.0
+                    step: 0.5
+                    minstep: 0.1
+                logarithmic: True
+                fixed: False
+                value: 0.0
+                LaTeX: "$\\log(M_{200}/M_\\mathrm{stars})$"
+        type: NFW_m200_c
+        include: False
+        contributes_to_potential: False
+
+    stars:
+        parameters:
+            q: # intrinsic flattening (C/A)
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 0.99
+                    step: 0.04
+                    minstep: 0.02
+                fixed: True
+                value: 0.15
+                LaTeX: "$q$"
+            p: # intrinsic flattening (B/A)
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 0.999
+                    step: 0.02
+                    minstep: 0.01
+                fixed: True
+                value: 0.999
+                LaTeX: "$p$"
+            u: # sigma_obs / sigma_intrinsic
+                par_generator_settings:
+                    lo: 0.05
+                    hi: 1.0
+                    step: 0.01
+                    minstep: 0.01
+                fixed: True
+                value: 0.9999
+                LaTeX: "$u$"
+        type: "TriaxialVisibleComponent"
+        mge_pot: "mge.ecsv"
+        mge_lum: "mge.ecsv"
+        include: True
+        contributes_to_potential: True
+        kinematics:
+            oasis:
+                type: BayesLOSVD
+                datafile: "hist_kins_o.ecsv"
+                aperturefile: "aperture_o.dat"
+                binfile: "bins_o.dat"
+            atlas3d:
+                type: GaussHermite
+                datafile: "gauss_hermite_kins_s.ecsv"
+                aperturefile: "aperture_s.dat"
+                binfile: "bins_s.dat"
+
+system_parameters:
+    ml:
+        par_generator_settings:
+            lo: 0.3
+            hi: 0.6
+            step: 1.0
+            minstep: 0.01
+        fixed: False
+        value: 0.46
+        logarithmic: True
+        LaTeX: "$\\log Y_\\mathrm{r}$"
+
+###############################################################################
+# SECTION 2: SETTINGS
+# Define other settings e.g. for the orbit library and weight solver
+###############################################################################
+
+orblib_settings:
+    nE: 21
+    logrmin: -1.0
+    logrmax: 2.5
+    nI2: 10              # must be >= 4
+    nI3: 7
+    dithering: 5          # pick dithering=1 for for fast tutorial exaecution
+    # the following values should usually not be changed
+    orbital_periods: 200
+    sampling: 50000
+    starting_orbit: 1
+    number_orbits: -1     # i.e. integrate all orbits
+    accuracy: '1.0d-5'
+    random_seed: 42     # fixed rnd. seed for reproducible tutorial (set to 0 for stochastic seed)
+
+weight_solver_settings:
+    type: "NNLS"
+    nnls_solver: "scipy"
+    regularisation: 4.0
+    number_GH: 6
+    GH_sys_err: '0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0'
+    lum_intr_rel_err: 0.01
+    sb_proj_rel_err: 0.02
+
+parameter_space_settings:
+    generator_type: "BayesOpt"
+    which_chi2: "kinchi2"  # only use kinematic part of chi2 for parameter search (recommended)
+    generator_settings:
+        # For LegacyGridSearch, specify ONE of the following two settings
+        # threshold_del_chi2_abs: 0.5  # absolute change in chi2 threshold
+        # threshold_del_chi2_as_frac_of_sqrt2nobs: 0.1
+        SpecificModels_mode: "list" # "list" or "cartesian"
+        n_processes: 64
+        strategy: 'gp'
+    stopping_criteria:
+        # min_delta_chi2_abs : 0.5  # absolute "optimality tolerance"
+        # #min_delta_chi2_rel : 0.05 # relative "optimality tolerance"
+        n_max_mods : 320
+        n_max_iter : 6
+
+multiprocessing_settings:
+    ncpus: 64        # integer or 'all_available'
+    ncpus_weights: 4                      # int or 'all_available', optional (default: ncpus), not used by all iterators
+    orblibs_in_parallel: False             # calculate tube and box orbits in parallel (default: False)
+
+legacy_settings:
+    directory: "default"
+    
+    
+io_settings:        # paths can be given with or without trailing slash
+    input_directory: ../templates/NGC4621-hist2
+    output_directory: ../dyn_models/4621-i75-0h6-01-hist4
+    all_models_file: "all_models.ecsv"
