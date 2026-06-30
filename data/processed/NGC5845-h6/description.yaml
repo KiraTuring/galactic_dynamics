@@ -1,0 +1,80 @@
+# NGC5845-h6 -- data description
+galaxy: NGC5845-h6
+type: 'E:'
+distMpc: 25.0
+redshift: '0.005550'
+fwhm_arcsec: 0.91
+oasis_run: 3
+pixsize: 0.27
+mge:
+  source: sauron_mge.ecsv
+  components: 12
+  q_min: 0.263
+  q_max: 0.8
+  sigma_min_arcsec: 0.0173
+  sigma_max_arcsec: 16.07
+kinematics:
+  bins: 320
+  v_min_kms: -157.5
+  v_max_kms: 167.05
+  sigma_min_kms: 139.9
+  sigma_max_kms: 280.73
+  pa: 144.0
+pPXF_settings:
+  template_library: MILES v9.1
+  moments: 6
+  bias: 0.5
+  degree: 4
+  fwhm_gal: 5.4
+  binning: ref_bins
+  ref_kinematics: kinematics_oasis_NGC5845.fits.gz
+  cube: MS_NGC5845_oas_r5_E3D.fits.gz
+data_quality: OASIS kinematics replaced with custom pPXF extraction (moments=6, bias=0.5,
+  MILES v9.1 templates). SAURON data unchanged from original processing.
+hst_images:
+- hst_06099_09_wfpc2_f555w_pc_drz.fits (proposal 6099, HST F555W)
+psf_fit:
+  OASIS:
+    sigma1: 0.4278574033096264
+    sigma2: 1.4696945928287308
+    weight1: 0.7699515885757993
+  SAURON:
+    sigma1: 0.746761475444327
+    sigma2: 4.616470105622174
+    weight1: 0.9731804457762667
+processing_log:
+- date: '2026-06-29'
+  step: pPXF kinematics replacement
+  notes: Replaced OASIS kinematics with pPXF h6 extraction (moments=6, bias=0.5, MILES
+    v9.1). PA=144.0, 320 bins.
+- date: '2026-06-29'
+  step: PSF fit (OASIS)
+  notes: sigma1=0.428, sigma2=1.470, weight1=0.770, chi2=0.050 (HLA DRZ proposal 6099)
+- date: '2026-06-29'
+  step: PSF fit (SAURON)
+  notes: sigma1=0.747, sigma2=4.616, weight1=0.973, chi2=0.215 (HLA DRZ proposal 6099)
+- date: '2026-06-29'
+  step: SAURON kinematics
+  notes: Generated _s files from SAURON r5, sigma x1.05 offset applied. PA check OASIS=-54.00
+    vs SAURON=-50.00, diff=4.00 deg (OK).
+- date: '2026-06-29'
+  step: h5/h6 → prior
+  notes: Set h5=0, dh5=0.1, h6=0, dh6=0.1 in gauss_hermite_kins_o/s.ecsv and combined.
+- date: '2026-06-29'
+  step: LOSVD histogram
+  notes: Generated hist_kins_o.ecsv (320 bins), hist_kins_s.ecsv (364 bins) via convert_gh_to_hist
+    (nvbins=30, vmax=1500, nmc=1000).
+- date: '2026-06-30'
+  step: JAM model (default)
+  notes: align=cyl, logistic=false, 4 free params. chi2=490.2, q=0.100, ratio=0.956,
+    lg_mbh=8.89, lg_ml=0.588.
+jam_models:
+- name: default
+  chi2: 490.2
+  q: 0.1
+  lg_mbh: 8.89
+  lg_ml: 0.588
+  ratio: 0.956
+  inc: 75.8
+  psf_source: fitted (proposal 6099)
+  kinematic_source: pPXF h6 → 0±0.1 prior
