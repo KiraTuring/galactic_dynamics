@@ -203,6 +203,14 @@ jam_models:
 
 Include `ratio_inf` for logistic models and `inc` for all models. Use `update_description.py` or edit the YAML directly.
 
+修改后提交到根仓库：
+
+```bash
+git add data/processed/{galaxy}/description.yaml
+git commit -m "{galaxy}: add {model} results"
+git push
+```
+
 ### Cleaning __pycache__
 
 If you edit `jam_fit/jam.py` or other JAM source files, stale `.pyc` can
