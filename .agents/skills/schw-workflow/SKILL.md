@@ -56,6 +56,7 @@ cp config/<base>.yaml config/<new>.yaml
 | `inc.value`, `inc.fixed` | **check JAM results** for plausible inclination; do not blindly copy 75° |
 | `seed` | different integer per run (avoid duplicate sampling) |
 | `clear_existing_models` | `true` for new run, `false` for resume |
+| `n_points` | (in `orblib_settings`) massweight sampling points, default 200000. Increase to 500000+ if MGE has very concentrated central components (`sigma` < 0.1") |
 
 > **⚠️ MUST confirm with user before submitting** — present the config parameters
 > (name, distMpc, BH/ML ranges, inc, output dir) and wait for explicit approval.
@@ -111,8 +112,9 @@ done
 | `Connection closed by UNKNOWN port` | EasyConnect VPN session expired | Re-login at http://localhost:8080 (VNC password: `opencode`) |
 | `No such file: config/...` | Config path relative to Axi_Schwarzschild | Use `../config/<name>.yaml` |
 | `MGE file ... not found` | Wrong `template_directory` | Check templates dir exists at that path |
-| `Directory not empty (rmtree)` | Cluster filesystem race; iterator crashed mid-cleanup | Just resubmit — directory is now clean |
-| Failed `run.py` with no queue.txt | `clear_existing_models: true` + stale datfil/ | Set `clear_existing_models: false` or rm the dir manually, then resubmit |
+| `Fractional Mass Error : 1.0` 刷屏 | massweight 采样不足（`n_points` 太小），Fortran 不收敛 | 增大 `n_points: 500000` |
+| `Directory not empty (rmtree)` | pool 与 iterator 竞态，创建了子目录 | 设 `clear_existing_models: false` + 手动 `rm -rf` |
+| Failed `run.py` with no queue.txt | NFS 缓存或竞态导致 rmtree 失败 `clear_existing_models: true` | 换新目录名（如 `-v2`）并设 `clear_existing_models: false` |
 
 ---
 
